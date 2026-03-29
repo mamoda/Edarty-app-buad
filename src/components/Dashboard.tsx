@@ -6,8 +6,6 @@ import {
   TrendingUp,
   LogOut,
   UserPlus,
-  Receipt,
-  FileText,
   BarChart3
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -31,6 +29,7 @@ export default function Dashboard() {
   const { user, schoolId, role, signOut } = useAuth();
 
   const [currentView, setCurrentView] = useState<View>('dashboard');
+
   const [stats, setStats] = useState<Statistics>({
     totalStudents: 0,
     activeStudents: 0,
@@ -38,70 +37,76 @@ export default function Dashboard() {
     totalExpenses: 0,
     netProfit: 0,
   });
+
   const [loading, setLoading] = useState(true);
 
-useEffect(() => {
-  if (!schoolId) return;
+  // تحميل الإحصائيات
+  const loadStatistics = async () => {
+    if (!schoolId) return;
 
-  loadStatistics();
-}, [schoolId]);
+    setLoading(true);
 
-const loadStatistics = async () => {
-  if (!schoolId) return;
+    try {
+      const [studentsRes, feesRes, expensesRes] = await Promise.all([
+        supabase
+          .from('students')
+          .select('*', { count: 'exact' })
+          .eq('school_id', schoolId),
 
-  setLoading(true);
+        supabase
+          .from('fees')
+          .select('amount'), // ⚠️ بدون school_id عشان ما يكسرش لو مش موجود
 
-  try {
-    const [studentsRes, feesRes, expensesRes] = await Promise.all([
-      supabase
-        .from('students')
-        .select('*', { count: 'exact' })
-        .eq('school_id', schoolId),
+        supabase
+          .from('expenses')
+          .select('amount'),
+      ]);
 
-      supabase
-        .from('fees')
-        .select('amount')
-        .eq('school_id', schoolId),
+      // تحقق من الأخطاء
+      if (studentsRes.error) console.error(studentsRes.error);
+      if (feesRes.error) console.error(feesRes.error);
+      if (expensesRes.error) console.error(expensesRes.error);
 
-      supabase
-        .from('expenses')
-        .select('amount')
-        .eq('school_id', schoolId),
-    ]);
+      const totalStudents = studentsRes.count || 0;
 
-    if (studentsRes.error || feesRes.error || expensesRes.error) {
-      console.error('Query errors:', {
-        studentsRes,
-        feesRes,
-        expensesRes,
+      const activeStudents =
+        studentsRes.data?.filter((s) => s.status === 'active').length || 0;
+
+      const totalRevenue =
+        feesRes.data?.reduce((sum, fee) => sum + Number(fee.amount || 0), 0) || 0;
+
+      const totalExpenses =
+        expensesRes.data?.reduce((sum, exp) => sum + Number(exp.amount || 0), 0) || 0;
+
+      setStats({
+        totalStudents,
+        activeStudents,
+        totalRevenue,
+        totalExpenses,
+        netProfit: totalRevenue - totalExpenses,
       });
-      return;
+    } catch (error) {
+      console.error('Error loading statistics:', error);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    const totalStudents = studentsRes.count || 0;
+  // تشغيل عند توفر schoolId
+  useEffect(() => {
+    if (!schoolId) return;
+    loadStatistics();
+  }, [schoolId]);
 
-    const activeStudents =
-      studentsRes.data?.filter((s) => s.status === 'active').length || 0;
+  // fallback لمنع loading الأبدي
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setLoading(false);
+    }, 5000);
 
-    const totalRevenue =
-      feesRes.data?.reduce((sum, fee) => sum + Number(fee.amount), 0) || 0;
+    return () => clearTimeout(timeout);
+  }, []);
 
-    const totalExpenses =
-      expensesRes.data?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0;
-
-    setStats({
-      totalStudents,
-      activeStudents,
-      totalRevenue,
-      totalExpenses,
-      netProfit: totalRevenue - totalExpenses,
-    });
-  } catch (error) {
-    console.error('Error loading statistics:', error);
-  } finally {
-    setLoading(false);
-  }
-};
   const handleViewChange = (view: View) => {
     setCurrentView(view);
     if (view === 'dashboard') {
@@ -126,7 +131,7 @@ const loadStatistics = async () => {
     </div>
   );
 
-  const MenuItem = ({ label, icon: Icon, view, count }: any) => (
+  const MenuItem = ({ label, icon: Icon, view }: any) => (
     <button
       onClick={() => handleViewChange(view)}
       className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
@@ -137,17 +142,17 @@ const loadStatistics = async () => {
     >
       <Icon className="w-5 h-5" />
       <span className="flex-1 text-right font-medium">{label}</span>
-      {count !== undefined && (
-        <span
-          className={`text-xs px-2 py-1 rounded-full ${
-            currentView === view ? 'bg-blue-500' : 'bg-gray-200 text-gray-700'
-          }`}
-        >
-          {count}
-        </span>
-      )}
     </button>
   );
+
+  // ⛔ لو مفيش مدرسة
+  if (!schoolId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-600">لا يوجد مدرسة مرتبطة بالمستخدم</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
@@ -167,7 +172,7 @@ const loadStatistics = async () => {
           </div>
 
           <button
-            onClick={() => signOut()}
+            onClick={signOut}
             className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg"
           >
             <LogOut className="w-5 h-5" />
@@ -181,7 +186,7 @@ const loadStatistics = async () => {
         <aside>
           <div className="bg-white p-4 rounded-xl shadow space-y-2 sticky top-24">
             <MenuItem label="لوحة التحكم" icon={BarChart3} view="dashboard" />
-            <MenuItem label="الطلاب" icon={Users} view="students" count={stats.activeStudents} />
+            <MenuItem label="الطلاب" icon={Users} view="students" />
 
             {(role === 'owner' || role === 'accountant') && (
               <MenuItem label="تحصيل المصاريف" icon={DollarSign} view="fees" />
