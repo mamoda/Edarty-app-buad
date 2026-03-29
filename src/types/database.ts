@@ -1,6 +1,19 @@
+export interface schools {
+  id: string;
+  name: string;
+}
+
+export interface school_user {
+  user_id: string;
+  school_id: string;
+  role: 'owner' | 'admin' | 'teacher' | 'accountant';
+}
+// Define for testing purposes
+
+// this is the center of our app, it will be used to store all the data related to students, fees, expenses and statistics
 export interface Student {
   id: string;
-  user_id: string;
+  school_id: string;
   full_name: string;
   grade: string;
   parent_name: string;
@@ -9,12 +22,11 @@ export interface Student {
   status: 'active' | 'inactive';
   created_at: string;
   updated_at: string;
-  school_id:string;
 }
 
 export interface Fee {
   id: string;
-  user_id: string;
+  school_id: string;
   student_id: string;
   amount: number;
   payment_type: string;
@@ -27,7 +39,7 @@ export interface Fee {
 
 export interface Expense {
   id: string;
-  user_id: string;
+  school_id: string;
   category: string;
   amount: number;
   description: string;

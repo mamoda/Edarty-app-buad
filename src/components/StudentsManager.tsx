@@ -9,12 +9,14 @@ interface StudentsManagerProps {
 }
 
 export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
-  const { user } = useAuth();
+  const { schoolId } = useAuth();
+
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
   const [formData, setFormData] = useState({
     full_name: '',
     grade: '',
@@ -24,18 +26,20 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
   });
 
   useEffect(() => {
-    loadStudents();
-  }, []);
+    if (schoolId) {
+      loadStudents();
+    }
+  }, [schoolId]);
 
   const loadStudents = async () => {
-    if (!user) return;
+    if (!schoolId) return;
 
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('students')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('school_id', schoolId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -49,20 +53,26 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!schoolId) return;
 
     try {
       if (editingStudent) {
         const { error } = await supabase
           .from('students')
-          .update({ ...formData, updated_at: new Date().toISOString() })
+          .update({
+            ...formData,
+            updated_at: new Date().toISOString(),
+          })
           .eq('id', editingStudent.id);
 
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from('students')
-          .insert([{ ...formData, user_id: user.id }]);
+        const { error } = await supabase.from('students').insert([
+          {
+            ...formData,
+            school_id: schoolId,
+          },
+        ]);
 
         if (error) throw error;
       }
@@ -86,6 +96,7 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
         .eq('id', id);
 
       if (error) throw error;
+
       loadStudents();
       onUpdate();
     } catch (error) {
@@ -118,7 +129,7 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
     setShowForm(false);
   };
 
-  const filteredStudents = students.filter(student =>
+  const filteredStudents = students.filter((student) =>
     student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.grade.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.parent_name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -130,178 +141,128 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
         <h2 className="text-2xl font-bold text-gray-900">إدارة الطلاب</h2>
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all shadow-md"
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
         >
           <UserPlus className="w-5 h-5" />
           <span>إضافة طالب</span>
         </button>
       </div>
 
+      {/* FORM */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
-              <h3 className="text-xl font-bold text-gray-900">
-                {editingStudent ? 'تعديل بيانات الطالب' : 'إضافة طالب جديد'}
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            <div className="px-6 py-4 border-b flex justify-between">
+              <h3 className="font-bold">
+                {editingStudent ? 'تعديل الطالب' : 'إضافة طالب'}
               </h3>
-              <button onClick={resetForm} className="text-gray-400 hover:text-gray-600">
-                <X className="w-6 h-6" />
+              <button onClick={resetForm}>
+                <X />
               </button>
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">اسم الطالب</label>
-                <input
-                  type="text"
-                  value={formData.full_name}
-                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  required
-                />
-              </div>
+              <input
+                placeholder="اسم الطالب"
+                value={formData.full_name}
+                onChange={(e) =>
+                  setFormData({ ...formData, full_name: e.target.value })
+                }
+                className="w-full border p-2 rounded"
+                required
+              />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">الصف الدراسي</label>
-                <input
-                  type="text"
-                  value={formData.grade}
-                  onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  placeholder="مثال: الصف الأول الابتدائي"
-                  required
-                />
-              </div>
+              <input
+                placeholder="الصف"
+                value={formData.grade}
+                onChange={(e) =>
+                  setFormData({ ...formData, grade: e.target.value })
+                }
+                className="w-full border p-2 rounded"
+                required
+              />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">اسم ولي الأمر</label>
-                <input
-                  type="text"
-                  value={formData.parent_name}
-                  onChange={(e) => setFormData({ ...formData, parent_name: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  required
-                />
-              </div>
+              <input
+                placeholder="اسم ولي الأمر"
+                value={formData.parent_name}
+                onChange={(e) =>
+                  setFormData({ ...formData, parent_name: e.target.value })
+                }
+                className="w-full border p-2 rounded"
+                required
+              />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">رقم الهاتف</label>
-                <input
-                  type="tel"
-                  value={formData.parent_phone}
-                  onChange={(e) => setFormData({ ...formData, parent_phone: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  placeholder="05xxxxxxxx"
-                  required
-                />
-              </div>
+              <input
+                placeholder="رقم الهاتف"
+                value={formData.parent_phone}
+                onChange={(e) =>
+                  setFormData({ ...formData, parent_phone: e.target.value })
+                }
+                className="w-full border p-2 rounded"
+                required
+              />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">الحالة</label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                >
-                  <option value="active">نشط</option>
-                  <option value="inactive">غير نشط</option>
-                </select>
-              </div>
+              <select
+                value={formData.status}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    status: e.target.value as 'active' | 'inactive',
+                  })
+                }
+                className="w-full border p-2 rounded"
+              >
+                <option value="active">نشط</option>
+                <option value="inactive">غير نشط</option>
+              </select>
 
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="submit"
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-all"
-                >
-                  {editingStudent ? 'حفظ التعديلات' : 'إضافة الطالب'}
-                </button>
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg transition-all"
-                >
-                  إلغاء
-                </button>
-              </div>
+              <button
+                type="submit"
+                className="w-full bg-blue-600 text-white py-2 rounded"
+              >
+                حفظ
+              </button>
             </form>
           </div>
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-md p-4">
+      {/* SEARCH */}
+      <div className="bg-white p-4 rounded-xl shadow">
         <div className="relative">
-          <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <Search className="absolute right-3 top-3 text-gray-400" />
           <input
             type="text"
+            placeholder="بحث..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="البحث عن طالب..."
-            className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            className="w-full pr-10 p-2 border rounded"
           />
         </div>
       </div>
 
+      {/* LIST */}
       {loading ? (
-        <div className="text-center py-12">
-          <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        </div>
+        <div className="text-center py-10">Loading...</div>
       ) : filteredStudents.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-md p-12 text-center">
-          <UserPlus className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد بيانات</h3>
-          <p className="text-gray-600 mb-6">لم يتم إضافة أي طلاب بعد</p>
-          <button
-            onClick={() => setShowForm(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-all"
-          >
-            إضافة أول طالب
-          </button>
-        </div>
+        <div className="text-center text-gray-500">لا يوجد طلاب</div>
       ) : (
         <div className="grid gap-4">
           {filteredStudents.map((student) => (
-            <div key={student.id} className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-all">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-3">
-                    <h3 className="text-lg font-bold text-gray-900">{student.full_name}</h3>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      student.status === 'active'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-700'
-                    }`}>
-                      {student.status === 'active' ? 'نشط' : 'غير نشط'}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                    <div>
-                      <span className="text-gray-600">الصف:</span>
-                      <span className="font-medium text-gray-900 mr-2">{student.grade}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">ولي الأمر:</span>
-                      <span className="font-medium text-gray-900 mr-2">{student.parent_name}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">الهاتف:</span>
-                      <span className="font-medium text-gray-900 mr-2">{student.parent_phone}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleEdit(student)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                  >
-                    <Edit2 className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(student.id)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                </div>
+            <div key={student.id} className="bg-white p-4 rounded-xl shadow flex justify-between">
+              <div>
+                <h3 className="font-bold">{student.full_name}</h3>
+                <p className="text-sm text-gray-500">{student.grade}</p>
+                <p className="text-sm">{student.parent_name}</p>
+              </div>
+
+              <div className="flex gap-2">
+                <button onClick={() => handleEdit(student)}>
+                  <Edit2 />
+                </button>
+                <button onClick={() => handleDelete(student.id)}>
+                  <Trash2 className="text-red-600" />
+                </button>
               </div>
             </div>
           ))}
