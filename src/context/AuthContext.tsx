@@ -102,8 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .from('schools')
       .insert([{ name: schoolName }])
       .select()
-      .single();
-
+      .maybeSingle(); 
     if (schoolError) {
       return { error: schoolError };
     }
