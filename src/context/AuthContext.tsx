@@ -20,6 +20,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchSchool = async (userId: string) => {
+    try {
+      console.log("CURRENT USER ID:", userId);
+
+      const { data, error } = await supabase
+        .from('school_users')
+        .select('school_id, role')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error(error);
+        return { schoolId: null, role: null };
+      }
+
+      return {
+        schoolId: data?.school_id ?? null,
+        role: data?.role ?? null,
+      };
+    } catch (err) {
+      console.error(err);
+      return { schoolId: null, role: null };
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
 
@@ -34,10 +59,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(currentUser);
 
         if (currentUser) {
-          await fetchSchool(currentUser.id);
+          const res = await fetchSchool(currentUser.id);
+          setSchoolId(res.schoolId);
+          setRole(res.role);
         }
       } catch (err) {
-        console.error('Init error:', err);
+        console.error(err);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -52,14 +79,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(currentUser);
 
         if (currentUser) {
-          await fetchSchool(currentUser.id);
+          const res = await fetchSchool(currentUser.id);
+          setSchoolId(res.schoolId);
+          setRole(res.role);
         } else {
           setSchoolId(null);
           setRole(null);
         }
 
-        // مهم جدًا: نقفل loading بعد أي تغيير auth
-        setLoading(false);
+        setLoading(false); // مهم جدًا هنا
       }
     );
 
@@ -68,38 +96,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       subscription.unsubscribe();
     };
   }, []);
-
-  const fetchSchool = async (userId: string) => {
-    try {
-      console.log("CURRENT USER ID:", userId);
-
-      const { data, error } = await supabase
-        .from('school_users')
-        .select('school_id, role')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error fetching school data:', error);
-        setSchoolId(null);
-        setRole(null);
-        return;
-      }
-
-      if (data) {
-        setSchoolId(data.school_id);
-        setRole(data.role);
-      } else {
-        console.warn('User not linked to any school');
-        setSchoolId(null);
-        setRole(null);
-      }
-    } catch (err) {
-      console.error('fetchSchool crash:', err);
-      setSchoolId(null);
-      setRole(null);
-    }
-  };
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -149,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return { error: null };
     } catch (err) {
-      console.error('SignUp error:', err);
+      console.error(err);
       return { error: err as Error };
     }
   };
@@ -180,7 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
