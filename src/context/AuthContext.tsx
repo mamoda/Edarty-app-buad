@@ -21,56 +21,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchSchool = async (userId: string) => {
-    try {
-      console.log("CURRENT USER ID:", userId);
+    console.log("CURRENT USER ID:", userId);
 
-      const { data, error } = await supabase
-        .from('school_users')
-        .select('school_id, role')
-        .eq('user_id', userId)
-        .maybeSingle();
+    const { data, error } = await supabase
+      .from('school_users')
+      .select('school_id, role')
+      .eq('user_id', userId)
+      .maybeSingle();
 
-      if (error) {
-        console.error(error);
-        return { schoolId: null, role: null };
-      }
-
-      return {
-        schoolId: data?.school_id ?? null,
-        role: data?.role ?? null,
-      };
-    } catch (err) {
-      console.error(err);
+    if (error) {
+      console.error('fetchSchool error:', error);
       return { schoolId: null, role: null };
     }
+
+    return {
+      schoolId: data?.school_id ?? null,
+      role: data?.role ?? null,
+    };
   };
 
   useEffect(() => {
-    let isMounted = true;
+    let mounted = true;
 
-    const init = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
 
-        const currentUser = session?.user ?? null;
+      if (!mounted) return;
 
-        if (!isMounted) return;
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
 
-        setUser(currentUser);
+      if (currentUser) {
+        const res = await fetchSchool(currentUser.id);
+        if (!mounted) return;
 
-        if (currentUser) {
-          const res = await fetchSchool(currentUser.id);
-          setSchoolId(res.schoolId);
-          setRole(res.role);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        if (isMounted) setLoading(false);
+        setSchoolId(res.schoolId);
+        setRole(res.role);
+      } else {
+        setSchoolId(null);
+        setRole(null);
       }
+
+      setLoading(false);
     };
 
-    init();
+    initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
@@ -87,12 +82,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRole(null);
         }
 
-        setLoading(false); // مهم جدًا هنا
+        setLoading(false);
       }
     );
 
     return () => {
-      isMounted = false;
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
@@ -107,47 +102,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, schoolName: string) => {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
 
-      if (error || !data.user) {
-        return { error };
-      }
-
-      const userId = data.user.id;
-
-      const { data: school, error: schoolError } = await supabase
-        .from('schools')
-        .insert([{ name: schoolName }])
-        .select()
-        .maybeSingle();
-
-      if (schoolError || !school) {
-        return { error: schoolError };
-      }
-
-      const { error: linkError } = await supabase
-        .from('school_users')
-        .insert([
-          {
-            user_id: userId,
-            school_id: school.id,
-            role: 'owner',
-          },
-        ]);
-
-      if (linkError) {
-        return { error: linkError };
-      }
-
-      return { error: null };
-    } catch (err) {
-      console.error(err);
-      return { error: err as Error };
+    if (error || !data.user) {
+      return { error };
     }
+
+    const userId = data.user.id;
+
+    const { data: school, error: schoolError } = await supabase
+      .from('schools')
+      .insert([{ name: schoolName }])
+      .select()
+      .maybeSingle();
+
+    if (schoolError || !school) {
+      return { error: schoolError };
+    }
+
+    const { error: linkError } = await supabase
+      .from('school_users')
+      .insert([
+        {
+          user_id: userId,
+          school_id: school.id,
+          role: 'owner',
+        },
+      ]);
+
+    if (linkError) {
+      return { error: linkError };
+    }
+
+    return { error: null };
   };
 
   const signOut = async () => {
