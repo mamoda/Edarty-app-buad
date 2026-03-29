@@ -38,37 +38,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   };
 
-  useEffect(() => {
-    let mounted = true;
+useEffect(() => {
+  let mounted = true;
 
-    const initAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
+  const initAuth = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!mounted) return;
+      
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
 
-        if (!mounted) return;
-
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-
-        if (currentUser) {
-          const res = await fetchSchool(currentUser.id);
-
-          if (!mounted) return;
-
+      if (currentUser) {
+        const res = await fetchSchool(currentUser.id);
+        if (mounted) {
           setSchoolId(res.schoolId);
           setRole(res.role);
-        } else {
-          setSchoolId(null);
-          setRole(null);
         }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        if (mounted) setLoading(false);
       }
-    };
+    } catch (err) {
+      console.error('Auth init error:', err);
+    } finally {
+      // ✅ هذا السطر يجب أن يُنفَّذ دائماً
+      if (mounted) setLoading(false);
+    }
+  };
 
-    initAuth();
+  initAuth();
+
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
@@ -104,45 +101,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, schoolName: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+const signUp = async (email: string, password: string, schoolName: string) => {
+  const { data, error } = await supabase.auth.signUp({ email, password });
 
-    if (error || !data.user) {
-      return { error };
-    }
+  if (error || !data.user) return { error };
 
-    const userId = data.user.id;
+  const userId = data.user.id;
 
-    const { data: school, error: schoolError } = await supabase
-      .from('schools')
-      .insert([{ name: schoolName }])
-      .select()
-      .maybeSingle();
+  // ✅ تحقق مما إذا كانت المدرسة موجودة مسبقاً
+  const { data: existingSchool } = await supabase
+    .from('schools')
+    .select('id')
+    .eq('name', schoolName)
+    .maybeSingle();
 
-    if (schoolError || !school) {
-      return { error: schoolError };
-    }
+  const school = existingSchool || (await supabase
+    .from('schools')
+    .insert([{ name: schoolName }])
+    .select()
+    .maybeSingle()).data;
 
-    const { error: linkError } = await supabase
-      .from('school_users')
-      .insert([
-        {
-          user_id: userId,
-          school_id: school.id,
-          role: 'owner',
-        },
-      ]);
+  if (!school) return { error: new Error('Failed to create school') };
 
-    if (linkError) {
-      return { error: linkError };
-    }
+  const { error: linkError } = await supabase
+    .from('school_users')
+    .insert([{ user_id: userId, school_id: school.id, role: 'owner' }]);
 
-    return { error: null };
-  };
+  if (linkError) return { error: linkError };
 
+  return { error: null };
+};
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);

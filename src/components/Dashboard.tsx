@@ -40,8 +40,9 @@ export default function Dashboard() {
 
   // تحميل الإحصائيات
 const loadStatistics = async () => {
-  if (!schoolId) return;
-
+if (!schoolId) {
+  return <p>لا يوجد مدرسة مرتبطة بالمستخدم</p>
+}
   try {
     const [studentsRes, feesRes, expensesRes] = await Promise.all([
       supabase
