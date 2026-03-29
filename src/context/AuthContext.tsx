@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState,useRef, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
@@ -19,6 +19,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [schoolId, setSchoolId] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const initialized = useRef(false);
 
   const fetchSchool = async (userId: string) => {
     const { data, error } = await supabase
@@ -39,12 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
 useEffect(() => {
-  let mounted = true;
-
-const initAuth = async () => {
-  try {
+  const initAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    console.log("session:", session);
 
     const currentUser = session?.user ?? null;
     setUser(currentUser);
@@ -57,39 +54,42 @@ const initAuth = async () => {
       setSchoolId(null);
       setRole(null);
     }
-  } catch (err) {
-    console.error(err);
-  } finally {
-    setLoading(false); // ✅ قفل هنا فقط
-  }
-};
+
+    initialized.current = true;
+    setLoading(false);
+  };
+
   initAuth();
 
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    async (_event, session) => {
+      const currentUser = session?.user ?? null;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        const currentUser = session?.user ?? null;
+      setUser(currentUser);
 
-        setUser(currentUser);
-
-        if (currentUser) {
-          const res = await fetchSchool(currentUser.id);
-          setSchoolId(res.schoolId);
-          setRole(res.role);
-        } else {
-          setSchoolId(null);
-          setRole(null);
-        }
-
-        setLoading(false);
+      if (currentUser) {
+        const res = await fetchSchool(currentUser.id);
+        setSchoolId(res.schoolId);
+        setRole(res.role);
+      } else {
+        setSchoolId(null);
+        setRole(null);
       }
-    );
 
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
+      // 🔥 مهم: اقفل loading بعد أول تحديث فعلي
+      if (!initialized.current) {
+        setLoading(false);
+        initialized.current = true;
+      }
+    }
+  );
+
+  return () => {
+    subscription.unsubscribe();
+  };
+}, []);
+
+
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
