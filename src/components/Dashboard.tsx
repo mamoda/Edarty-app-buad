@@ -84,6 +84,9 @@ const loadStatistics = async () => {
     setLoading(false);
   }
 };
+
+
+
   useEffect(() => {
     if (!schoolId) return;
 
