@@ -2,15 +2,13 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
-type Role = 'owner' | 'admin' | 'teacher' | 'accountant';
-
 interface AuthContextType {
   user: User | null;
   schoolId: string | null;
-  role: Role | null;
+  role: string | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, schoolName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -19,42 +17,24 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [schoolId, setSchoolId] = useState<string | null>(null);
-  const [role, setRole] = useState<Role | null>(null);
+  const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 👇 تجيب بيانات المدرسة + الدور
-  const fetchUserSchool = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('school_users')
-      .select('school_id, role')
-      .eq('user_id', userId)
-      .maybeSingle()
-
-    if (error) {
-      console.error('Error fetching school data:', error);
-      return null;
-    }
-
-    return data;
-  };
-
   useEffect(() => {
-    const getSession = async () => {
+    const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
 
       const currentUser = session?.user ?? null;
       setUser(currentUser);
 
       if (currentUser) {
-        const schoolData = await fetchUserSchool(currentUser.id);
-        setSchoolId(schoolData?.school_id ?? null);
-        setRole(schoolData?.role ?? null);
+        await fetchSchool(currentUser.id);
       }
 
       setLoading(false);
     };
 
-    getSession();
+    init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
@@ -62,9 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(currentUser);
 
         if (currentUser) {
-          const schoolData = await fetchUserSchool(currentUser.id);
-          setSchoolId(schoolData?.school_id ?? null);
-          setRole(schoolData?.role ?? null);
+          await fetchSchool(currentUser.id);
         } else {
           setSchoolId(null);
           setRole(null);
@@ -75,18 +53,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const fetchSchool = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('school_users')
+      .select('school_id, role')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching school data:', error);
+      return;
+    }
+
+    if (data) {
+      setSchoolId(data.school_id);
+      setRole(data.role);
+    } else {
+      console.warn('User not linked to any school');
+      setSchoolId(null);
+      setRole(null);
+    }
+  };
+
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
     return { error };
   };
 
-  const signUp = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
+  const signUp = async (email: string, password: string, schoolName: string) => {
+    // 1. Create user
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
 
-    // 🔥 مهم: بعد التسجيل هتعمل school + تربط user (بعد كده)
-    // حالياً سيبها كده لحد ما نعمل flow الإنشاء
+    if (error || !data.user) {
+      return { error };
+    }
 
-    return { error };
+    const userId = data.user.id;
+
+    // 2. Create school
+    const { data: school, error: schoolError } = await supabase
+      .from('schools')
+      .insert([{ name: schoolName }])
+      .select()
+      .single();
+
+    if (schoolError) {
+      return { error: schoolError };
+    }
+
+    // 3. Link user to school
+    const { error: linkError } = await supabase
+      .from('school_users')
+      .insert([
+        {
+          user_id: userId,
+          school_id: school.id,
+          role: 'owner',
+        },
+      ]);
+
+    if (linkError) {
+      return { error: linkError };
+    }
+
+    return { error: null };
   };
 
   const signOut = async () => {
