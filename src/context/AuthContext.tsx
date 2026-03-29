@@ -44,6 +44,7 @@ useEffect(() => {
 const initAuth = async () => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
+    console.log("session:", session);
 
     const currentUser = session?.user ?? null;
     setUser(currentUser);
@@ -129,6 +130,8 @@ const signUp = async (email: string, password: string, schoolName: string) => {
 
   return { error: null };
 };
+console.log("loading:", loading);
+console.log("user:", user);
 
 
 
@@ -163,3 +166,4 @@ export function useAuth() {
   }
   return context;
 }
+
