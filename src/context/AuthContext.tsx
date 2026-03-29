@@ -41,29 +41,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 useEffect(() => {
   let mounted = true;
 
-  const initAuth = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!mounted) return;
-      
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
+const initAuth = async () => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
 
-      if (currentUser) {
-        const res = await fetchSchool(currentUser.id);
-        if (mounted) {
-          setSchoolId(res.schoolId);
-          setRole(res.role);
-        }
-      }
-    } catch (err) {
-      console.error('Auth init error:', err);
-    } finally {
-      // ✅ هذا السطر يجب أن يُنفَّذ دائماً
-      if (mounted) setLoading(false);
+    const currentUser = session?.user ?? null;
+    setUser(currentUser);
+
+    if (currentUser) {
+      const res = await fetchSchool(currentUser.id);
+      setSchoolId(res.schoolId);
+      setRole(res.role);
+    } else {
+      setSchoolId(null);
+      setRole(null);
     }
-  };
-
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setLoading(false); // ✅ قفل هنا فقط
+  }
+};
   initAuth();
 
 
@@ -131,6 +129,9 @@ const signUp = async (email: string, password: string, schoolName: string) => {
 
   return { error: null };
 };
+
+
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
