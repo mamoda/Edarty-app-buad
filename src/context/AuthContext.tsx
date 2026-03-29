@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .from('school_users')
       .select('school_id, role')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle()
 
     if (error) {
       console.error('Error fetching school data:', error);
