@@ -46,7 +46,7 @@ const loadStatistics = async () => {
     return;
   }
 
-  setLoading(true);
+  setLoading(false);
 
   try {
     const [studentsRes, feesRes, expensesRes] = await Promise.all([
