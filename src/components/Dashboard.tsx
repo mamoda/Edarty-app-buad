@@ -40,58 +40,68 @@ export default function Dashboard() {
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (schoolId) {
-      loadStatistics();
-    }
-  }, [schoolId]);
+useEffect(() => {
+  if (!schoolId) return;
 
-  const loadStatistics = async () => {
-    if (!schoolId) return;
+  loadStatistics();
+}, [schoolId]);
 
-    setLoading(true);
-    try {
-      const [studentsRes, feesRes, expensesRes] = await Promise.all([
-        supabase
-          .from('students')
-          .select('*', { count: 'exact' })
-          .eq('school_id', schoolId),
+const loadStatistics = async () => {
+  if (!schoolId) return;
 
-        supabase
-          .from('fees')
-          .select('amount')
-          .eq('school_id', schoolId),
+  setLoading(true);
 
-        supabase
-          .from('expenses')
-          .select('amount')
-          .eq('school_id', schoolId),
-      ]);
+  try {
+    const [studentsRes, feesRes, expensesRes] = await Promise.all([
+      supabase
+        .from('students')
+        .select('*', { count: 'exact' })
+        .eq('school_id', schoolId),
 
-      const totalStudents = studentsRes.count || 0;
-      const activeStudents =
-        studentsRes.data?.filter((s) => s.status === 'active').length || 0;
+      supabase
+        .from('fees')
+        .select('amount')
+        .eq('school_id', schoolId),
 
-      const totalRevenue =
-        feesRes.data?.reduce((sum, fee) => sum + Number(fee.amount), 0) || 0;
+      supabase
+        .from('expenses')
+        .select('amount')
+        .eq('school_id', schoolId),
+    ]);
 
-      const totalExpenses =
-        expensesRes.data?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0;
-
-      setStats({
-        totalStudents,
-        activeStudents,
-        totalRevenue,
-        totalExpenses,
-        netProfit: totalRevenue - totalExpenses,
+    if (studentsRes.error || feesRes.error || expensesRes.error) {
+      console.error('Query errors:', {
+        studentsRes,
+        feesRes,
+        expensesRes,
       });
-    } catch (error) {
-      console.error('Error loading statistics:', error);
-    } finally {
-      setLoading(false);
+      return;
     }
-  };
 
+    const totalStudents = studentsRes.count || 0;
+
+    const activeStudents =
+      studentsRes.data?.filter((s) => s.status === 'active').length || 0;
+
+    const totalRevenue =
+      feesRes.data?.reduce((sum, fee) => sum + Number(fee.amount), 0) || 0;
+
+    const totalExpenses =
+      expensesRes.data?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0;
+
+    setStats({
+      totalStudents,
+      activeStudents,
+      totalRevenue,
+      totalExpenses,
+      netProfit: totalRevenue - totalExpenses,
+    });
+  } catch (error) {
+    console.error('Error loading statistics:', error);
+  } finally {
+    setLoading(false);
+  }
+};
   const handleViewChange = (view: View) => {
     setCurrentView(view);
     if (view === 'dashboard') {
