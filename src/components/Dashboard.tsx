@@ -38,8 +38,7 @@ export default function Dashboard() {
     netProfit: 0,
   });
 
-  const [loading, setLoading] = useState(true);
-
+const [loading, setLoading] = useState(false);
   // تحميل الإحصائيات
   const loadStatistics = async () => {
     if (!schoolId) return;
