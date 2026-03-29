@@ -26,7 +26,7 @@ type View =
   | "users";
 
 export default function Dashboard() {
-  const { user, schoolId, role, signOut } = useAuth();
+  const { user, schoolId, role, signOut, loading } = useAuth();
 
   const [currentView, setCurrentView] = useState<View>("dashboard");
 
@@ -38,15 +38,9 @@ export default function Dashboard() {
     netProfit: 0,
   });
 
-  const [loading, setLoading] = useState(false);
   // تحميل الإحصائيات
 const loadStatistics = async () => {
-  if (!schoolId) {
-    setLoading(false);
-    return;
-  }
-  setLoading(true); // ✅ لازم هنا
-
+  if (!schoolId) return;
 
   try {
     const [studentsRes, feesRes, expensesRes] = await Promise.all([
@@ -80,11 +74,8 @@ const loadStatistics = async () => {
     });
   } catch (error) {
     console.error(error);
-  } finally {
-    setLoading(false);
   }
 };
-
 
 
   useEffect(() => {
@@ -95,7 +86,6 @@ const loadStatistics = async () => {
 
   useEffect(() => {
     if (schoolId === null) {
-      setLoading(false);
     }
   }, [schoolId]);
 

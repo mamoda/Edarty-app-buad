@@ -21,8 +21,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchSchool = async (userId: string) => {
-    console.log("CURRENT USER ID:", userId);
-
     const { data, error } = await supabase
       .from('school_users')
       .select('school_id, role')
@@ -40,65 +38,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   };
 
-useEffect(() => {
-  let mounted = true;
+  useEffect(() => {
+    let mounted = true;
 
-  const initAuth = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!mounted) return;
-
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-
-      if (currentUser) {
-        const res = await fetchSchool(currentUser.id);
+    const initAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
 
         if (!mounted) return;
 
-        setSchoolId(res.schoolId);
-        setRole(res.role);
-      } else {
-        setSchoolId(null);
-        setRole(null);
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+
+        if (currentUser) {
+          const res = await fetchSchool(currentUser.id);
+
+          if (!mounted) return;
+
+          setSchoolId(res.schoolId);
+          setRole(res.role);
+        } else {
+          setSchoolId(null);
+          setRole(null);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (mounted) setLoading(false);
       }
-    } catch (err) {
-      console.error('initAuth error:', err);
-    } finally {
-      if (mounted) {
+    };
+
+    initAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        const currentUser = session?.user ?? null;
+
+        setUser(currentUser);
+
+        if (currentUser) {
+          const res = await fetchSchool(currentUser.id);
+          setSchoolId(res.schoolId);
+          setRole(res.role);
+        } else {
+          setSchoolId(null);
+          setRole(null);
+        }
+
         setLoading(false);
       }
-    }
-  };
+    );
 
-  initAuth();
-
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(
-    async (_event, session) => {
-      const currentUser = session?.user ?? null;
-
-      setUser(currentUser);
-
-      if (currentUser) {
-        const res = await fetchSchool(currentUser.id);
-        setSchoolId(res.schoolId);
-        setRole(res.role);
-      } else {
-        setSchoolId(null);
-        setRole(null);
-      }
-
-      setLoading(false);
-    }
-  );
-
-  return () => {
-    mounted = false;
-    subscription.unsubscribe();
-  };
-}, []);
-
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
