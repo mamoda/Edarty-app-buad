@@ -1,14 +1,27 @@
-import { createContext, useContext, useEffect, useState,useRef, ReactNode } from 'react';
-import { User } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
+import { User } from "@supabase/supabase-js";
+import { supabase } from "../lib/supabase";
 
 interface AuthContextType {
   user: User | null;
   schoolId: string | null;
   role: string | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, schoolName: string) => Promise<{ error: Error | null }>;
+  signIn: (
+    email: string,
+    password: string
+  ) => Promise<{ error: Error | null }>;
+  signUp: (
+    email: string,
+    password: string,
+    schoolName: string
+  ) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -19,17 +32,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [schoolId, setSchoolId] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const initialized = useRef(false);
 
+  // ✅ جلب المدرسة
   const fetchSchool = async (userId: string) => {
     const { data, error } = await supabase
-      .from('school_users')
-      .select('school_id, role')
-      .eq('user_id', userId)
+      .from("school_users")
+      .select("school_id, role")
+      .eq("user_id", userId)
       .maybeSingle();
 
     if (error) {
-      console.error('fetchSchool error:', error);
+      console.error("fetchSchool error:", error);
       return { schoolId: null, role: null };
     }
 
@@ -39,32 +52,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   };
 
-useEffect(() => {
-  const initAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+  useEffect(() => {
+    const handleSession = async (session: any) => {
+      setLoading(true);
 
-    const currentUser = session?.user ?? null;
-    setUser(currentUser);
-
-    if (currentUser) {
-      const res = await fetchSchool(currentUser.id);
-      setSchoolId(res.schoolId);
-      setRole(res.role);
-    } else {
-      setSchoolId(null);
-      setRole(null);
-    }
-
-    initialized.current = true;
-    setLoading(false);
-  };
-
-  initAuth();
-
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(
-    async (_event, session) => {
       const currentUser = session?.user ?? null;
-
       setUser(currentUser);
 
       if (currentUser) {
@@ -76,20 +68,31 @@ useEffect(() => {
         setRole(null);
       }
 
-      // 🔥 مهم: اقفل loading بعد أول تحديث فعلي
-      if (!initialized.current) {
-        setLoading(false);
-        initialized.current = true;
-      }
-    }
-  );
+      setLoading(false);
+    };
 
-  return () => {
-    subscription.unsubscribe();
-  };
-}, []);
+    // ✅ أول تحميل
+    const initAuth = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
+      await handleSession(session);
+    };
 
+    initAuth();
+
+    // ✅ الاستماع لأي تغيير في auth
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      handleSession(session);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -100,40 +103,59 @@ useEffect(() => {
     return { error };
   };
 
-const signUp = async (email: string, password: string, schoolName: string) => {
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const signUp = async (
+    email: string,
+    password: string,
+    schoolName: string
+  ) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
 
-  if (error || !data.user) return { error };
+    if (error || !data.user) return { error };
 
-  const userId = data.user.id;
+    const userId = data.user.id;
 
-  // ✅ تحقق مما إذا كانت المدرسة موجودة مسبقاً
-  const { data: existingSchool } = await supabase
-    .from('schools')
-    .select('id')
-    .eq('name', schoolName)
-    .maybeSingle();
+    // ✅ هل المدرسة موجودة؟
+    const { data: existingSchool } = await supabase
+      .from("schools")
+      .select("id")
+      .eq("name", schoolName)
+      .maybeSingle();
 
-  const school = existingSchool || (await supabase
-    .from('schools')
-    .insert([{ name: schoolName }])
-    .select()
-    .maybeSingle()).data;
+    let school = existingSchool;
 
-  if (!school) return { error: new Error('Failed to create school') };
+    // ✅ لو مش موجودة، نعملها
+    if (!school) {
+      const { data: newSchool } = await supabase
+        .from("schools")
+        .insert([{ name: schoolName }])
+        .select()
+        .maybeSingle();
 
-  const { error: linkError } = await supabase
-    .from('school_users')
-    .insert([{ user_id: userId, school_id: school.id, role: 'owner' }]);
+      school = newSchool;
+    }
 
-  if (linkError) return { error: linkError };
+    if (!school) {
+      return { error: new Error("Failed to create school") };
+    }
 
-  return { error: null };
-};
-console.log("loading:", loading);
-console.log("user:", user);
+    // ✅ ربط المستخدم بالمدرسة
+    const { error: linkError } = await supabase
+      .from("school_users")
+      .insert([
+        {
+          user_id: userId,
+          school_id: school.id,
+          role: "owner",
+        },
+      ]);
 
+    if (linkError) return { error: linkError };
 
+    return { error: null };
+  };
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -161,9 +183,10 @@ console.log("user:", user);
 
 export function useAuth() {
   const context = useContext(AuthContext);
+
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
+
   return context;
 }
-

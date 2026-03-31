@@ -38,63 +38,59 @@ export default function Dashboard() {
     netProfit: 0,
   });
 
-  // تحميل الإحصائيات
-const loadStatistics = async () => {
-// ✅ اعرض التحميل أولاً، ثم تحقق من schoolId
-if (loading) {
-  return <div className="text-center py-12">جارٍ التحميل...</div>
-}
+  const [statsLoading, setStatsLoading] = useState(false);
 
-if (!schoolId) {
-  return <p className="text-center text-gray-600">لا يوجد مدرسة مرتبطة بالمستخدم</p>
-}
+  // ✅ تحميل الإحصائيات
+  const loadStatistics = async () => {
+    if (!schoolId) return;
 
+    setStatsLoading(true);
 
-  try {
-    const [studentsRes, feesRes, expensesRes] = await Promise.all([
-      supabase
-        .from('students')
-        .select('*', { count: 'exact' })
-        .eq('school_id', schoolId),
+    try {
+      const [studentsRes, feesRes, expensesRes] = await Promise.all([
+        supabase
+          .from("students")
+          .select("*", { count: "exact" })
+          .eq("school_id", schoolId),
 
-      supabase.from('fees').select('amount'),
+        supabase.from("fees").select("amount"),
+        supabase.from("expenses").select("amount"),
+      ]);
 
-      supabase.from('expenses').select('amount'),
-    ]);
+      const totalStudents = studentsRes.count || 0;
 
-    const totalStudents = studentsRes.count || 0;
+      const activeStudents =
+        studentsRes.data?.filter((s) => s.status === "active").length || 0;
 
-    const activeStudents =
-      studentsRes.data?.filter((s) => s.status === 'active').length || 0;
+      const totalRevenue =
+        feesRes.data?.reduce(
+          (sum, fee) => sum + Number(fee.amount || 0),
+          0
+        ) || 0;
 
-    const totalRevenue =
-      feesRes.data?.reduce((sum, fee) => sum + Number(fee.amount || 0), 0) || 0;
+      const totalExpenses =
+        expensesRes.data?.reduce(
+          (sum, exp) => sum + Number(exp.amount || 0),
+          0
+        ) || 0;
 
-    const totalExpenses =
-      expensesRes.data?.reduce((sum, exp) => sum + Number(exp.amount || 0), 0) || 0;
-
-    setStats({
-      totalStudents,
-      activeStudents,
-      totalRevenue,
-      totalExpenses,
-      netProfit: totalRevenue - totalExpenses,
-    });
-  } catch (error) {
-    console.error(error);
-  }
-};
-
+      setStats({
+        totalStudents,
+        activeStudents,
+        totalRevenue,
+        totalExpenses,
+        netProfit: totalRevenue - totalExpenses,
+      });
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!schoolId) return;
-
     loadStatistics();
-  }, [schoolId]);
-
-  useEffect(() => {
-    if (schoolId === null) {
-    }
   }, [schoolId]);
 
   const handleViewChange = (view: View) => {
@@ -114,7 +110,9 @@ if (!schoolId) {
           <p className="text-gray-600 text-sm mb-1">{title}</p>
           <p className="text-2xl font-bold text-gray-900">
             {prefix}
-            {typeof value === "number" ? value.toLocaleString("ar-EG") : value}
+            {typeof value === "number"
+              ? value.toLocaleString("ar-EG")
+              : value}
           </p>
         </div>
         <div
@@ -141,11 +139,22 @@ if (!schoolId) {
     </button>
   );
 
+  // ✅ مهم: استنى auth يخلص الأول
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>جارٍ التحميل...</p>
+      </div>
+    );
+  }
+
   // ⛔ لو مفيش مدرسة
   if (!schoolId) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-600">لا يوجد مدرسة مرتبطة بالمستخدم</p>
+        <p className="text-gray-600">
+          لا يوجد مدرسة مرتبطة بالمستخدم
+        </p>
       </div>
     );
   }
@@ -204,8 +213,10 @@ if (!schoolId) {
         <main className="lg:col-span-3">
           {currentView === "dashboard" && (
             <div className="space-y-6">
-              {loading ? (
-                <div className="text-center py-12">Loading...</div>
+              {statsLoading ? (
+                <div className="text-center py-12">
+                  جارٍ تحميل الإحصائيات...
+                </div>
               ) : (
                 <>
                   <div className="grid md:grid-cols-2 gap-4">
@@ -226,23 +237,29 @@ if (!schoolId) {
                       value={stats.totalRevenue}
                       icon={DollarSign}
                       color="#8b5cf6"
-                      prefix="ج.م"
+                      prefix="ج.م "
                     />
                     <StatCard
                       title="التكاليف"
                       value={stats.totalExpenses}
                       icon={TrendingDown}
                       color="#ef4444"
-                      prefix="ج.م"
+                      prefix="ج.م "
                     />
                   </div>
 
                   <div className="bg-white p-6 rounded-xl shadow">
-                    <h3 className="text-xl font-bold mb-2">صافي الربح</h3>
+                    <h3 className="text-xl font-bold mb-2">
+                      صافي الربح
+                    </h3>
                     <p
-                      className={`text-3xl font-bold ${stats.netProfit >= 0 ? "text-green-600" : "text-red-600"}`}
+                      className={`text-3xl font-bold ${
+                        stats.netProfit >= 0
+                          ? "text-green-600"
+                          : "text-red-600"
+                      }`}
                     >
-                      {stats.netProfit} ج.م
+                      {stats.netProfit.toLocaleString("ar-EG")} ج.م
                     </p>
                   </div>
                 </>
@@ -253,7 +270,9 @@ if (!schoolId) {
           {currentView === "students" && (
             <StudentsManager onUpdate={loadStatistics} />
           )}
-          {currentView === "fees" && <FeesManager onUpdate={loadStatistics} />}
+          {currentView === "fees" && (
+            <FeesManager onUpdate={loadStatistics} />
+          )}
           {currentView === "expenses" && (
             <ExpensesManager onUpdate={loadStatistics} />
           )}
