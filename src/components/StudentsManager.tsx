@@ -9,7 +9,7 @@ interface StudentsManagerProps {
 }
 
 export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
-  const { schoolId } = useAuth();
+  const { schoolId , user } = useAuth();
 
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,6 +71,7 @@ export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
           {
             ...formData,
             school_id: schoolId,
+            user_id: user?.id, // ✅ مهم جدًا
           },
         ]);
 
