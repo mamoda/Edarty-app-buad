@@ -1,3 +1,5 @@
+// src/App.tsx
+import { BrowserRouter } from 'react-router-dom'; // أضف هذا الاستيراد
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
@@ -21,9 +23,11 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <BrowserRouter> {/* لف التطبيق بـ BrowserRouter */}
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 
