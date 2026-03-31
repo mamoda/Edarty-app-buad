@@ -20,6 +20,7 @@ import UsersManager from "./UsersManager";
 type View =
   | "dashboard"
   | "students"
+  | "teachers"
   | "fees"
   | "expenses"
   | "reports"
