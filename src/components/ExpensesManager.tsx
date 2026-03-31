@@ -9,7 +9,7 @@ interface ExpensesManagerProps {
 }
 
 export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
-  const { schoolId } = useAuth();
+  const { schoolId , user} = useAuth();
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,6 +78,7 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
             {
               ...expenseData,
               school_id: schoolId,
+              user_id: user?.id, // ✅ مهم 
             },
           ]);
 
