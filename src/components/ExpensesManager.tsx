@@ -1,51 +1,75 @@
-import { useState, useEffect } from 'react';
-import { TrendingDown, Plus, Edit2, Trash2, Search, X } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
-import { Expense } from '../types/database';
+// src/components/ExpensesManager.tsx (النسخة المحسنة)
+import { useState, useEffect } from "react";
+import { TrendingDown, Plus, Edit2, Trash2, Search, X, Calendar, ChevronDown } from "lucide-react";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "../context/AuthContext";
+import { Expense } from "../types/database";
 
 interface ExpensesManagerProps {
   onUpdate: () => void;
 }
 
 export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
-  const { schoolId , user} = useAuth();
+  const { schoolId, user } = useAuth();
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   const [formData, setFormData] = useState({
-    category: '',
-    amount: '',
-    description: '',
-    expense_date: new Date().toISOString().split('T')[0],
-    notes: '',
+    category: "",
+    amount: "",
+    description: "",
+    expense_date: new Date().toISOString().split("T")[0],
+    notes: "",
   });
 
   useEffect(() => {
     if (schoolId) {
       loadExpenses();
     }
-  }, [schoolId]);
+  }, [schoolId, selectedMonth, selectedYear]);
+
+  const formatNumber = (num: number, fractionDigits: number = 2) => {
+    return Number(num).toLocaleString("ar-EG", {
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
+    });
+  };
+
+  const getMonthName = (month: number) => {
+    const months = [
+      'يناير', 'فبراير', 'مارس', 'إبريل', 'مايو', 'يونيو',
+      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+    ];
+    return months[month - 1];
+  };
 
   const loadExpenses = async () => {
     if (!schoolId) return;
 
     setLoading(true);
     try {
+      // فلترة المصروفات حسب الشهر والسنة
+      const startDate = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`;
+      const endDate = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-31`;
+
       const { data, error } = await supabase
-        .from('expenses')
-        .select('*')
-        .eq('school_id', schoolId)
-        .order('expense_date', { ascending: false });
+        .from("expenses")
+        .select("*")
+        .eq("school_id", schoolId)
+        .gte("expense_date", startDate)
+        .lte("expense_date", endDate)
+        .order("expense_date", { ascending: false });
 
       if (error) throw error;
       setExpenses(data || []);
     } catch (error) {
-      console.error('Error loading expenses:', error);
+      console.error("Error loading expenses:", error);
     } finally {
       setLoading(false);
     }
@@ -57,30 +81,27 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
 
     try {
       const expenseData = {
-        ...formData,
+        category: formData.category,
+        description: formData.description,
         amount: parseFloat(formData.amount),
+        expense_date: formData.expense_date,
+        notes: formData.notes,
+        school_id: schoolId,
+        user_id: user?.id,
       };
 
       if (editingExpense) {
         const { error } = await supabase
-          .from('expenses')
-          .update({
-            ...expenseData,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', editingExpense.id);
+          .from("expenses")
+          .update(expenseData)
+          .eq("id", editingExpense.id)
+          .eq("school_id", schoolId);
 
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from('expenses')
-          .insert([
-            {
-              ...expenseData,
-              school_id: schoolId,
-              user_id: user?.id, // ✅ مهم 
-            },
-          ]);
+          .from("expenses")
+          .insert([expenseData]);
 
         if (error) throw error;
       }
@@ -89,27 +110,27 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
       loadExpenses();
       onUpdate();
     } catch (error) {
-      console.error('Error saving expense:', error);
-      alert('حدث خطأ أثناء حفظ البيانات');
+      console.error("Error saving expense:", error);
+      alert("حدث خطأ أثناء حفظ البيانات");
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('هل أنت متأكد من حذف هذا المصروف؟')) return;
+    if (!confirm("هل أنت متأكد من حذف هذا المصروف؟")) return;
 
     try {
       const { error } = await supabase
-        .from('expenses')
+        .from("expenses")
         .delete()
-        .eq('id', id);
+        .eq("id", id)
+        .eq("school_id", schoolId);
 
       if (error) throw error;
-
       loadExpenses();
       onUpdate();
     } catch (error) {
-      console.error('Error deleting expense:', error);
-      alert('حدث خطأ أثناء حذف المصروف');
+      console.error("Error deleting expense:", error);
+      alert("حدث خطأ أثناء حذف المصروف");
     }
   };
 
@@ -120,18 +141,18 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
       amount: expense.amount.toString(),
       description: expense.description,
       expense_date: expense.expense_date,
-      notes: expense.notes,
+      notes: expense.notes || "",
     });
     setShowForm(true);
   };
 
   const resetForm = () => {
     setFormData({
-      category: '',
-      amount: '',
-      description: '',
-      expense_date: new Date().toISOString().split('T')[0],
-      notes: '',
+      category: "",
+      amount: "",
+      description: "",
+      expense_date: new Date().toISOString().split("T")[0],
+      notes: "",
     });
     setEditingExpense(null);
     setShowForm(false);
@@ -144,18 +165,22 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
   );
 
   const categories = [
-    'رواتب المعلمين',
-    'رواتب الإداريين',
-    'صيانة المباني',
-    'الكهرباء والماء',
-    'الإنترنت والاتصالات',
-    'القرطاسية',
-    'التنظيفات',
-    'الأمن',
-    'النقل',
-    'أخرى',
+    "رواتب المعلمين",
+    "رواتب الإداريين",
+    "صيانة المباني",
+    "الكهرباء والماء",
+    "الإنترنت والاتصالات",
+    "القرطاسية",
+    "التنظيفات",
+    "الأمن",
+    "النقل",
+    "أخرى",
   ];
 
+  // حساب إجمالي المصروفات للشهر الحالي
+  const totalExpensesThisMonth = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+
+  // حساب المصروفات حسب الفئة للشهر الحالي
   const categoryTotals = categories
     .map((cat) => ({
       category: cat,
@@ -163,165 +188,414 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
         .filter((e) => e.category === cat)
         .reduce((sum, e) => sum + Number(e.amount), 0),
     }))
-    .filter((c) => c.total > 0);
+    .filter((c) => c.total > 0)
+    .sort((a, b) => b.total - a.total);
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">إدارة التكاليف</h2>
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">إدارة التكاليف</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            تسجيل ومتابعة المصروفات الشهرية
+          </p>
+        </div>
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg"
+          className="flex items-center gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white px-5 py-2.5 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg"
         >
           <Plus className="w-5 h-5" />
-          <span>إضافة مصروف</span>
+          <span className="font-medium">إضافة مصروف</span>
         </button>
       </div>
 
-      {/* CATEGORY SUMMARY */}
+      {/* Filter and Summary */}
+      <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-4 border border-gray-100/50">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">تصفية حسب:</span>
+            </div>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+              className="px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none bg-gray-50/50 text-sm"
+            >
+              {[1,2,3,4,5,6,7,8,9,10,11,12].map(month => (
+                <option key={month} value={month}>{getMonthName(month)}</option>
+              ))}
+            </select>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+              className="px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none bg-gray-50/50 text-sm"
+            >
+              {[2024, 2025, 2026].map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2 px-4 py-2 bg-red-50 rounded-xl">
+            <span className="text-sm text-gray-600">إجمالي المصروفات:</span>
+            <span className="text-xl font-bold text-red-600">
+              {formatNumber(totalExpensesThisMonth)} ج.م
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="group relative bg-white/90 backdrop-blur-xl rounded-2xl shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden border border-gray-100/50">
+          <div className="relative p-6">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2 flex-1">
+                <p className="text-sm font-medium text-gray-500">عدد المصروفات</p>
+                <p className="text-2xl font-bold text-gray-900">{formatNumber(expenses.length, 0)}</p>
+              </div>
+              <div className="relative mr-3">
+                <div className="absolute inset-0 bg-gradient-to-br from-red-600 to-rose-600 rounded-xl blur-xl opacity-30"></div>
+                <div className="relative p-3 bg-gradient-to-br from-red-600 to-rose-600 rounded-xl shadow-lg">
+                  <TrendingDown className="w-5 h-5 text-white" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="group relative bg-white/90 backdrop-blur-xl rounded-2xl shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden border border-gray-100/50">
+          <div className="relative p-6">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2 flex-1">
+                <p className="text-sm font-medium text-gray-500">متوسط المصروف</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {expenses.length > 0 ? formatNumber(totalExpensesThisMonth / expenses.length) : "٠"} ج.م
+                </p>
+              </div>
+              <div className="relative mr-3">
+                <div className="absolute inset-0 bg-gradient-to-br from-orange-600 to-amber-600 rounded-xl blur-xl opacity-30"></div>
+                <div className="relative p-3 bg-gradient-to-br from-orange-600 to-amber-600 rounded-xl shadow-lg">
+                  <Calendar className="w-5 h-5 text-white" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="group relative bg-white/90 backdrop-blur-xl rounded-2xl shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden border border-gray-100/50">
+          <div className="relative p-6">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2 flex-1">
+                <p className="text-sm font-medium text-gray-500">أعلى فئة</p>
+                <p className="text-2xl font-bold text-gray-900 truncate">
+                  {categoryTotals[0]?.category?.slice(0, 15) || "---"}
+                </p>
+              </div>
+              <div className="relative mr-3">
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl blur-xl opacity-30"></div>
+                <div className="relative p-3 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl shadow-lg">
+                  <TrendingDown className="w-5 h-5 text-white" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="group relative bg-white/90 backdrop-blur-xl rounded-2xl shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden border border-gray-100/50">
+          <div className="relative p-6">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2 flex-1">
+                <p className="text-sm font-medium text-gray-500">أقل فئة</p>
+                <p className="text-2xl font-bold text-gray-900 truncate">
+                  {categoryTotals[categoryTotals.length - 1]?.category?.slice(0, 15) || "---"}
+                </p>
+              </div>
+              <div className="relative mr-3">
+                <div className="absolute inset-0 bg-gradient-to-br from-green-600 to-emerald-600 rounded-xl blur-xl opacity-30"></div>
+                <div className="relative p-3 bg-gradient-to-br from-green-600 to-emerald-600 rounded-xl shadow-lg">
+                  <TrendingDown className="w-5 h-5 text-white" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Category Summary */}
       {categoryTotals.length > 0 && (
-        <div className="bg-white rounded-xl shadow-md p-6">
-          <h3 className="text-lg font-bold mb-4">
-            ملخص التكاليف حسب الفئة
+        <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-6 border border-gray-100/50">
+          <h3 className="text-lg font-bold text-gray-900 mb-4">
+            ملخص التكاليف حسب الفئة - {getMonthName(selectedMonth)} {selectedYear}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {categoryTotals.map(({ category, total }) => (
-              <div
-                key={category}
-                className="flex justify-between p-3 bg-gray-50 rounded-lg"
-              >
-                <span>{category}</span>
-                <span className="font-bold text-red-600">
-                  {total.toFixed(2)}
-                </span>
-              </div>
-            ))}
+            {categoryTotals.map(({ category, total }) => {
+              const percentage = (total / totalExpensesThisMonth) * 100;
+              return (
+                <div
+                  key={category}
+                  className="p-3 bg-gray-50 rounded-xl hover:shadow-md transition-all"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">{category}</span>
+                    <span className="text-sm font-bold text-red-600">
+                      {formatNumber(total)} ج.م
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-red-600 to-rose-600 h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${percentage}%` }}
+                    ></div>
+                  </div>
+                  <div className="text-left mt-1">
+                    <span className="text-xs text-gray-500">{percentage.toFixed(1)}%</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* FORM */}
+      {/* Search Bar */}
+      <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-4 border border-gray-100/50">
+        <div className="relative">
+          <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="البحث بالوصف أو الفئة..."
+            className="w-full pr-10 pl-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none bg-gray-50/50"
+          />
+        </div>
+      </div>
+
+      {/* Add/Edit Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
-            <div className="px-6 py-4 border-b flex justify-between">
-              <h3 className="font-bold">
-                {editingExpense ? 'تعديل المصروف' : 'إضافة مصروف'}
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-gray-900">
+                {editingExpense ? "تعديل المصروف" : "إضافة مصروف جديد"}
               </h3>
-              <button onClick={resetForm}>
-                <X />
+              <button
+                onClick={resetForm}
+                className="p-1 text-gray-400 hover:text-gray-600 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6" />
               </button>
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <select
-                value={formData.category}
-                onChange={(e) =>
-                  setFormData({ ...formData, category: e.target.value })
-                }
-                className="w-full border p-2 rounded"
-                required
-              >
-                <option value="">اختر الفئة</option>
-                {categories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  فئة المصروف <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={formData.category}
+                  onChange={(e) =>
+                    setFormData({ ...formData, category: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none bg-gray-50/50"
+                  required
+                >
+                  <option value="">اختر الفئة</option>
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-              <input
-                placeholder="الوصف"
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                className="w-full border p-2 rounded"
-                required
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  الوصف <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none bg-gray-50/50"
+                  placeholder="مثال: راتب شهر يناير"
+                  required
+                />
+              </div>
 
-              <input
-                type="number"
-                step="0.01"
-                placeholder="المبلغ"
-                value={formData.amount}
-                onChange={(e) =>
-                  setFormData({ ...formData, amount: e.target.value })
-                }
-                className="w-full border p-2 rounded"
-                required
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  المبلغ (ج.م) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.amount}
+                  onChange={(e) =>
+                    setFormData({ ...formData, amount: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none bg-gray-50/50"
+                  placeholder="0.00"
+                  required
+                />
+              </div>
 
-              <input
-                type="date"
-                value={formData.expense_date}
-                onChange={(e) =>
-                  setFormData({ ...formData, expense_date: e.target.value })
-                }
-                className="w-full border p-2 rounded"
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  تاريخ المصروف <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={formData.expense_date}
+                  onChange={(e) =>
+                    setFormData({ ...formData, expense_date: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none bg-gray-50/50"
+                  required
+                />
+              </div>
 
-              <textarea
-                placeholder="ملاحظات"
-                value={formData.notes}
-                onChange={(e) =>
-                  setFormData({ ...formData, notes: e.target.value })
-                }
-                className="w-full border p-2 rounded"
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  ملاحظات
+                </label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) =>
+                    setFormData({ ...formData, notes: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none bg-gray-50/50 resize-none"
+                  rows={3}
+                  placeholder="أي ملاحظات إضافية..."
+                />
+              </div>
 
-              <button
-                type="submit"
-                className="w-full bg-red-600 text-white py-2 rounded"
-              >
-                حفظ
-              </button>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white py-2.5 px-4 rounded-xl transition-all duration-300 font-medium"
+                >
+                  {editingExpense ? "حفظ التعديلات" : "إضافة المصروف"}
+                </button>
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl transition-all duration-300 font-medium"
+                >
+                  إلغاء
+                </button>
+              </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* SEARCH */}
-      <div className="bg-white p-4 rounded-xl shadow">
-        <div className="relative">
-          <Search className="absolute right-3 top-3 text-gray-400" />
-          <input
-            type="text"
-            placeholder="بحث..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pr-10 p-2 border rounded"
-          />
-        </div>
-      </div>
-
-      {/* LIST */}
+      {/* Expenses List */}
       {loading ? (
-        <div className="text-center py-10">Loading...</div>
+        <div className="flex items-center justify-center py-20">
+          <div className="relative">
+            <div className="w-10 h-10 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+            <p className="mt-4 text-gray-500">جاري تحميل البيانات...</p>
+          </div>
+        </div>
       ) : filteredExpenses.length === 0 ? (
-        <div className="text-center text-gray-500">لا توجد مصروفات</div>
+        <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-12 text-center border border-gray-100/50">
+          <TrendingDown className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            لا توجد مصروفات
+          </h3>
+          <p className="text-gray-600 mb-6">
+            {searchTerm ? "لا توجد نتائج للبحث" : `لم يتم تسجيل أي مصروفات لشهر ${getMonthName(selectedMonth)} ${selectedYear}`}
+          </p>
+          <button
+            onClick={() => setShowForm(true)}
+            className="bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white px-6 py-2 rounded-xl transition-all duration-300 shadow-md"
+          >
+            إضافة أول مصروف
+          </button>
+        </div>
       ) : (
         <div className="grid gap-4">
           {filteredExpenses.map((expense) => (
             <div
               key={expense.id}
-              className="bg-white p-4 rounded-xl shadow flex justify-between"
+              className="group bg-white/90 backdrop-blur-xl rounded-xl shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden border border-gray-100/50 hover:border-gray-200/80"
             >
-              <div>
-                <h3 className="font-bold">{expense.description}</h3>
-                <p className="text-sm text-gray-500">
-                  {expense.category}
-                </p>
-                <p className="text-sm">{expense.expense_date}</p>
-              </div>
+              <div className="relative p-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-3 flex-wrap">
+                      <div className="p-2 bg-red-100 rounded-lg">
+                        <TrendingDown className="w-5 h-5 text-red-600" />
+                      </div>
+                      <h3 className="text-lg font-bold text-gray-900">
+                        {expense.description}
+                      </h3>
+                      <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
+                        {expense.category}
+                      </span>
+                    </div>
 
-              <div className="flex gap-2">
-                <button onClick={() => handleEdit(expense)}>
-                  <Edit2 />
-                </button>
-                <button onClick={() => handleDelete(expense.id)}>
-                  <Trash2 className="text-red-600" />
-                </button>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-gray-600">المبلغ:</span>
+                        <span className="font-bold text-red-600">
+                          {formatNumber(expense.amount)} ج.م
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Calendar className="w-4 h-4 text-gray-400" />
+                        <span className="text-gray-600">التاريخ:</span>
+                        <span className="font-medium text-gray-900">
+                          {new Date(expense.expense_date).toLocaleDateString('ar-EG')}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-gray-600">نسبة من الإجمالي:</span>
+                        <span className="font-medium text-gray-900">
+                          {((expense.amount / totalExpensesThisMonth) * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+
+                    {expense.notes && (
+                      <div className="mt-3 flex items-start gap-2 text-sm">
+                        <span className="text-gray-600">ملاحظات:</span>
+                        <span className="text-gray-700">{expense.notes}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2 mr-4">
+                    <button
+                      onClick={() => handleEdit(expense)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                      title="تعديل"
+                    >
+                      <Edit2 className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(expense.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                      title="حذف"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Progress bar for expense percentage */}
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100">
+                  <div
+                    className="h-full bg-gradient-to-r from-red-600 to-rose-600 rounded-full transition-all duration-500"
+                    style={{ width: `${((expense.amount / totalExpensesThisMonth) * 100)}%` }}
+                  ></div>
+                </div>
               </div>
             </div>
           ))}
