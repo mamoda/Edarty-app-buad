@@ -49,37 +49,36 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
     return months[month - 1];
   };
 
-  const loadExpenses = async () => {
-    if (!schoolId) return;
+const loadExpenses = async () => {
+  if (!schoolId) return;
 
-    setLoading(true);
-    try {
-      // حساب أول يوم في الشهر
-      const startDate = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`;
-      
-      // حساب آخر يوم في الشهر بشكل صحيح
-      const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
-      const endDate = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-${lastDay}`;
+  setLoading(true);
+  try {
+    // حساب أول يوم في الشهر
+    const startDate = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`;
+    
+    // ✅ حساب آخر يوم في الشهر بشكل صحيح
+    const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
+    const endDate = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-${lastDay}`;
 
-      console.log(`📅 Loading expenses from ${startDate} to ${endDate}`);
+    console.log(`📅 Loading expenses from ${startDate} to ${endDate}`);
 
-      const { data, error } = await supabase
-        .from("expenses")
-        .select("*")
-        .eq("school_id", schoolId)
-        .gte("expense_date", startDate)
-        .lte("expense_date", endDate)
-        .order("expense_date", { ascending: false });
+    const { data, error } = await supabase
+      .from("expenses")
+      .select("*")
+      .eq("school_id", schoolId)
+      .gte("expense_date", startDate)
+      .lte("expense_date", endDate)
+      .order("expense_date", { ascending: false });
 
-      if (error) throw error;
-      setExpenses(data || []);
-    } catch (error) {
-      console.error("Error loading expenses:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+    if (error) throw error;
+    setExpenses(data || []);
+  } catch (error) {
+    console.error("Error loading expenses:", error);
+  } finally {
+    setLoading(false);
+  }
+};
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!schoolId) return;
