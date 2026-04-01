@@ -24,39 +24,29 @@ import {
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
-import { SchoolUser } from "../types/database";
 
 interface SchoolUserWithDetails {
   id: string;
   user_id: string;
   email: string;
   full_name: string;
-  role: "owner" | "admin" | "teacher" | "accountant";
+  role: 'owner' | 'admin' | 'teacher' | 'accountant';
   created_at: string;
 }
 
 export default function SettingsManager() {
-  const {
-    currentSchool,
-    user: currentUser,
-    allSchools,
-    switchSchool,
-  } = useAuth();
-
+  const { currentSchool, user: currentUser, allSchools, switchSchool } = useAuth();
+  
   const [users, setUsers] = useState<SchoolUserWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<
-    "users" | "school" | "subscription"
-  >("users");
+  const [activeTab, setActiveTab] = useState<'users' | 'school' | 'subscription'>('users');
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<
-    "admin" | "teacher" | "accountant"
-  >("teacher");
+  const [inviteRole, setInviteRole] = useState<"admin" | "teacher" | "accountant">("teacher");
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState("");
   const [inviteSuccess, setInviteSuccess] = useState("");
-
+  
   // إعدادات المدرسة
   const [schoolSettings, setSchoolSettings] = useState({
     name: "",
@@ -68,10 +58,10 @@ export default function SettingsManager() {
   const [schoolLoading, setSchoolLoading] = useState(false);
   const [schoolSaveSuccess, setSchoolSaveSuccess] = useState("");
   const [schoolSaveError, setSchoolSaveError] = useState("");
-
+  
   // الاشتراك
   const [subscription, setSubscription] = useState({
-    plan: "free" as "free" | "basic" | "pro" | "enterprise",
+    plan: "free" as 'free' | 'basic' | 'pro' | 'enterprise',
     expires_at: null as string | null,
   });
   const [upgradeLoading, setUpgradeLoading] = useState(false);
@@ -82,13 +72,31 @@ export default function SettingsManager() {
   const canManageSchool = currentRole === "owner";
   const schoolId = currentSchool?.schoolId;
 
-  // إنشاء قائمة المدارس المعالجة
+  const roleColors = {
+    owner: "bg-purple-100 text-purple-700",
+    admin: "bg-blue-100 text-blue-700",
+    teacher: "bg-green-100 text-green-700",
+    accountant: "bg-orange-100 text-orange-700",
+  };
+
+  const roleNames = {
+    owner: "مالك",
+    admin: "مدير",
+    teacher: "معلم",
+    accountant: "محاسب",
+  };
+
+  // إنشاء قائمة المدارس المعالجة - تبسيط الحل
   const schoolOptions = useMemo(() => {
-    return allSchools.map((school) => ({
+    if (!allSchools || allSchools.length === 0) {
+      return [] as Array<{ id: string; label: string; role: string; isPrimary: boolean }>;
+    }
+    
+    return allSchools.map(school => ({
       id: school.school_id,
       label: `${school.school_id.slice(0, 8)} - ${roleNames[school.role]}`,
       role: school.role,
-      isPrimary: school.is_primary || false,
+      isPrimary: school.is_primary || false
     }));
   }, [allSchools]);
 
@@ -104,49 +112,42 @@ export default function SettingsManager() {
 
   const loadUsers = async () => {
     if (!schoolId) return;
-
+    
     setLoading(true);
     try {
-      // جلب مستخدمي المدرسة من جدول school_users
       const { data: schoolUsers, error: schoolUsersError } = await supabase
         .from("school_users")
-        .select(
-          `
+        .select(`
           id,
           user_id,
           role,
           created_at
-        `,
-        )
+        `)
         .eq("school_id", schoolId);
-
+      
       if (schoolUsersError) throw schoolUsersError;
-
+      
       if (schoolUsers && schoolUsers.length > 0) {
-        // جلب بيانات المستخدمين من جدول users
-        const userIds = schoolUsers.map((u) => u.user_id);
+        const userIds = schoolUsers.map(u => u.user_id);
         const { data: usersData, error: usersError } = await supabase
           .from("users")
           .select("id, email, full_name")
           .in("id", userIds);
-
+        
         if (usersError) throw usersError;
-
-        // دمج البيانات
-        const usersWithDetails: SchoolUserWithDetails[] = schoolUsers.map(
-          (su) => {
-            const userInfo = usersData?.find((u) => u.id === su.user_id);
-            return {
-              id: su.id,
-              user_id: su.user_id,
-              role: su.role,
-              created_at: su.created_at,
-              email: userInfo?.email || su.user_id,
-              full_name: userInfo?.full_name || "غير محدد",
-            };
-          },
-        );
-
+        
+        const usersWithDetails: SchoolUserWithDetails[] = schoolUsers.map(su => {
+          const userInfo = usersData?.find(u => u.id === su.user_id);
+          return {
+            id: su.id,
+            user_id: su.user_id,
+            role: su.role,
+            created_at: su.created_at,
+            email: userInfo?.email || su.user_id,
+            full_name: userInfo?.full_name || "غير محدد",
+          };
+        });
+        
         setUsers(usersWithDetails);
       } else {
         setUsers([]);
@@ -160,16 +161,16 @@ export default function SettingsManager() {
 
   const loadSchoolSettings = async () => {
     if (!schoolId) return;
-
+    
     try {
       const { data, error } = await supabase
         .from("schools")
         .select("name, email, address, phone, tax_number")
         .eq("id", schoolId)
         .single();
-
+      
       if (error) throw error;
-
+      
       if (data) {
         setSchoolSettings({
           name: data.name || "",
@@ -186,16 +187,16 @@ export default function SettingsManager() {
 
   const loadSubscription = async () => {
     if (!schoolId) return;
-
+    
     try {
       const { data, error } = await supabase
         .from("schools")
         .select("subscription_plan, subscription_expires_at")
         .eq("id", schoolId)
         .single();
-
+      
       if (error) throw error;
-
+      
       if (data) {
         setSubscription({
           plan: data.subscription_plan || "free",
@@ -210,46 +211,41 @@ export default function SettingsManager() {
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!schoolId) return;
-
+    
     setInviteLoading(true);
     setInviteError("");
     setInviteSuccess("");
-
+    
     try {
-      // البحث عن المستخدم في جدول users
       const { data: existingUser, error: userError } = await supabase
         .from("users")
         .select("id, email, full_name")
         .eq("email", inviteEmail)
         .maybeSingle();
-
+      
       if (userError) throw userError;
-
+      
       if (!existingUser) {
-        setInviteError(
-          "المستخدم غير موجود في النظام. يجب على المستخدم إنشاء حساب أولاً.",
-        );
+        setInviteError("المستخدم غير موجود في النظام. يجب على المستخدم إنشاء حساب أولاً.");
         setInviteLoading(false);
         return;
       }
-
-      // التحقق من أن المستخدم ليس مضافاً بالفعل للمدرسة
+      
       const { data: existingRole, error: roleError } = await supabase
         .from("school_users")
         .select("id")
         .eq("school_id", schoolId)
         .eq("user_id", existingUser.id)
         .maybeSingle();
-
+      
       if (roleError) throw roleError;
-
+      
       if (existingRole) {
         setInviteError("المستخدم مضاف بالفعل للمدرسة");
         setInviteLoading(false);
         return;
       }
-
-      // إضافة المستخدم للمدرسة
+      
       const { error: insertError } = await supabase
         .from("school_users")
         .insert({
@@ -258,15 +254,14 @@ export default function SettingsManager() {
           role: inviteRole,
           is_primary: false,
         });
-
+      
       if (insertError) throw insertError;
-
-      setInviteSuccess(
-        `تمت إضافة ${inviteEmail} بنجاح كـ ${inviteRole === "admin" ? "مدير" : inviteRole === "accountant" ? "محاسب" : "معلم"}`,
-      );
+      
+      setInviteSuccess(`تمت إضافة ${inviteEmail} بنجاح كـ ${inviteRole === "admin" ? "مدير" : inviteRole === "accountant" ? "محاسب" : "معلم"}`);
       setInviteEmail("");
       setShowInviteForm(false);
       loadUsers();
+      
     } catch (error) {
       console.error("Error inviting user:", error);
       setInviteError("حدث خطأ أثناء إضافة المستخدم");
@@ -277,23 +272,22 @@ export default function SettingsManager() {
 
   const updateUserRole = async (userId: string, newRole: string) => {
     if (!schoolId) return;
-
-    // منع تغيير دور المالك
-    const targetUser = users.find((u) => u.user_id === userId);
+    
+    const targetUser = users.find(u => u.user_id === userId);
     if (targetUser?.role === "owner") {
       alert("لا يمكن تغيير صلاحية المالك");
       return;
     }
-
+    
     try {
       const { error } = await supabase
         .from("school_users")
         .update({ role: newRole })
         .eq("user_id", userId)
         .eq("school_id", schoolId);
-
+      
       if (error) throw error;
-
+      
       loadUsers();
       alert("تم تحديث صلاحية المستخدم بنجاح");
     } catch (error) {
@@ -304,29 +298,27 @@ export default function SettingsManager() {
 
   const removeUser = async (userId: string, userName: string) => {
     if (!confirm(`هل أنت متأكد من إزالة ${userName} من المدرسة؟`)) return;
-
-    // منع إزالة المالك
-    const targetUser = users.find((u) => u.user_id === userId);
+    
+    const targetUser = users.find(u => u.user_id === userId);
     if (targetUser?.role === "owner") {
       alert("لا يمكن إزالة المالك من المدرسة");
       return;
     }
-
-    // منع إزالة النفس
+    
     if (userId === currentUser?.id) {
       alert("لا يمكنك إزالة نفسك من المدرسة");
       return;
     }
-
+    
     try {
       const { error } = await supabase
         .from("school_users")
         .delete()
         .eq("user_id", userId)
         .eq("school_id", schoolId);
-
+      
       if (error) throw error;
-
+      
       loadUsers();
       alert("تم إزالة المستخدم بنجاح");
     } catch (error) {
@@ -338,11 +330,11 @@ export default function SettingsManager() {
   const saveSchoolSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!schoolId) return;
-
+    
     setSchoolLoading(true);
     setSchoolSaveSuccess("");
     setSchoolSaveError("");
-
+    
     try {
       const { error } = await supabase
         .from("schools")
@@ -354,9 +346,9 @@ export default function SettingsManager() {
           tax_number: schoolSettings.tax_number,
         })
         .eq("id", schoolId);
-
+      
       if (error) throw error;
-
+      
       setSchoolSaveSuccess("تم حفظ إعدادات المدرسة بنجاح");
       setTimeout(() => setSchoolSaveSuccess(""), 3000);
     } catch (error) {
@@ -375,16 +367,11 @@ export default function SettingsManager() {
 
   const getPlanName = (plan: string) => {
     switch (plan) {
-      case "free":
-        return "مجاني";
-      case "basic":
-        return "أساسي";
-      case "pro":
-        return "احترافي";
-      case "enterprise":
-        return "مؤسسات";
-      default:
-        return plan;
+      case "free": return "مجاني";
+      case "basic": return "أساسي";
+      case "pro": return "احترافي";
+      case "enterprise": return "مؤسسات";
+      default: return plan;
     }
   };
 
@@ -398,36 +385,18 @@ export default function SettingsManager() {
   };
 
   const daysRemaining = getDaysRemaining();
-  const isExpiringSoon =
-    daysRemaining !== null && daysRemaining <= 7 && daysRemaining > 0;
+  const isExpiringSoon = daysRemaining !== null && daysRemaining <= 7 && daysRemaining > 0;
   const isExpired = daysRemaining !== null && daysRemaining <= 0;
 
-  const roleColors = {
-    owner: "bg-purple-100 text-purple-700",
-    admin: "bg-blue-100 text-blue-700",
-    teacher: "bg-green-100 text-green-700",
-    accountant: "bg-orange-100 text-orange-700",
-  };
-
-  const roleNames = {
-    owner: "مالك",
-    admin: "مدير",
-    teacher: "معلم",
-    accountant: "محاسب",
-  };
-
   // إذا كان المستخدم ليس لديه مدرسة محددة
-  if (!currentSchool && allSchools.length > 0) {
+  if (!currentSchool && allSchools && allSchools.length > 0) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center max-w-md">
           <School className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">اختر مدرسة</h3>
-          <p className="text-gray-500 mb-4">
-            أنت مسجل في عدة مدارس، يرجى اختيار مدرسة للعمل عليها
-          </p>
+          <p className="text-gray-500 mb-4">أنت مسجل في عدة مدارس، يرجى اختيار مدرسة للعمل عليها</p>
           <div className="space-y-2">
-            // 🔥 الجزء اللي كان فيه المشكلة فقط (تم إصلاحه)
             {schoolOptions.map((school) => (
               <button
                 key={school.id}
@@ -435,8 +404,7 @@ export default function SettingsManager() {
                 className="w-full p-4 text-right bg-white rounded-lg border hover:border-blue-500 hover:bg-blue-50 transition-all"
               >
                 <div className="font-medium text-gray-900">
-                  {/* ✅ تم التعديل هنا */}
-                  {schoolId === school.id ? "✓ " : ""}
+                  {currentSchool?.schoolId === school.id ? "✓ " : ""}
                   مدرسة #{school.id.slice(0, 8)}
                 </div>
                 <div className="text-sm text-gray-500 mt-1">
@@ -456,9 +424,7 @@ export default function SettingsManager() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            لا توجد مدرسة
-          </h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد مدرسة</h3>
           <p className="text-gray-500">لم يتم العثور على مدرسة مرتبطة بحسابك</p>
         </div>
       </div>
@@ -468,19 +434,15 @@ export default function SettingsManager() {
   return (
     <div className="space-y-6">
       {/* School Switcher - إذا كان المستخدم في عدة مدارس */}
-      {allSchools.length > 1 && (
+      {allSchools && allSchools.length > 1 && schoolOptions.length > 0 && (
         <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-4 border border-gray-100/50">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-2">
               <School className="w-5 h-5 text-gray-500" />
               <span className="text-sm text-gray-600">المدرسة الحالية:</span>
-              <span className="font-medium text-gray-900">
-                {schoolSettings.name || "غير محدد"}
-              </span>
-              <span
-                className={`px-2 py-0.5 rounded-full text-xs ${roleColors[currentRole || "teacher"]}`}
-              >
-                {roleNames[currentRole || "teacher"]}
+              <span className="font-medium text-gray-900">{schoolSettings.name || "غير محدد"}</span>
+              <span className={`px-2 py-0.5 rounded-full text-xs ${roleColors[currentRole || 'teacher']}`}>
+                {roleNames[currentRole || 'teacher']}
               </span>
             </div>
             <select
@@ -498,7 +460,7 @@ export default function SettingsManager() {
         </div>
       )}
 
-      {/* Header */}
+      {/* باقي الكود كما هو... */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">الإعدادات</h2>
@@ -551,10 +513,10 @@ export default function SettingsManager() {
         )}
       </div>
 
-      {/* Users Management Tab */}
+      {/* باقي الأقسام - نفس الكود السابق */}
       {activeTab === "users" && canManageUsers && (
         <div className="space-y-6">
-          {/* Invite User Button */}
+          {/* نفس الكود السابق للمستخدمين */}
           <div className="flex justify-end">
             <button
               onClick={() => setShowInviteForm(true)}
@@ -565,14 +527,11 @@ export default function SettingsManager() {
             </button>
           </div>
 
-          {/* Invite Form Modal */}
           {showInviteForm && (
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
               <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
                 <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-                  <h3 className="text-xl font-bold text-gray-900">
-                    إضافة مستخدم جديد
-                  </h3>
+                  <h3 className="text-xl font-bold text-gray-900">إضافة مستخدم جديد</h3>
                   <button
                     onClick={() => setShowInviteForm(false)}
                     className="p-1 text-gray-400 hover:text-gray-600 rounded-lg"
@@ -652,13 +611,10 @@ export default function SettingsManager() {
             </div>
           )}
 
-          {/* Users List */}
           <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm border border-gray-100/50 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100">
               <h3 className="font-semibold text-gray-900">المستخدمين</h3>
-              <p className="text-sm text-gray-500">
-                إدارة صلاحيات المستخدمين في المدرسة
-              </p>
+              <p className="text-sm text-gray-500">إدارة صلاحيات المستخدمين في المدرسة</p>
             </div>
 
             {loading ? (
@@ -673,65 +629,45 @@ export default function SettingsManager() {
             ) : (
               <div className="divide-y divide-gray-100">
                 {users.map((user) => (
-                  <div
-                    key={user.id}
-                    className="p-4 hover:bg-gray-50/50 transition-all"
-                  >
+                  <div key={user.id} className="p-4 hover:bg-gray-50/50 transition-all">
                     <div className="flex items-center justify-between flex-wrap gap-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white font-bold">
-                            {user.full_name?.charAt(0).toUpperCase() ||
-                              user.email?.charAt(0).toUpperCase() ||
-                              "U"}
+                            {user.full_name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || "U"}
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">
-                              {user.full_name || "غير محدد"}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              {user.email}
-                            </p>
+                            <p className="font-medium text-gray-900">{user.full_name || "غير محدد"}</p>
+                            <p className="text-sm text-gray-500">{user.email}</p>
                           </div>
                         </div>
                       </div>
-
+                      
                       <div className="flex items-center gap-3">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${roleColors[user.role]}`}
-                        >
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${roleColors[user.role]}`}>
                           {roleNames[user.role]}
                         </span>
-
-                        {user.user_id !== currentUser?.id &&
-                          user.role !== "owner" &&
-                          canManageUsers && (
-                            <>
-                              <select
-                                value={user.role}
-                                onChange={(e) =>
-                                  updateUserRole(user.user_id, e.target.value)
-                                }
-                                className="px-2 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                              >
-                                <option value="admin">مدير</option>
-                                <option value="accountant">محاسب</option>
-                                <option value="teacher">معلم</option>
-                              </select>
-                              <button
-                                onClick={() =>
-                                  removeUser(
-                                    user.user_id,
-                                    user.full_name || user.email || "المستخدم",
-                                  )
-                                }
-                                className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                title="إزالة المستخدم"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </>
-                          )}
+                        
+                        {user.user_id !== currentUser?.id && user.role !== "owner" && canManageUsers && (
+                          <>
+                            <select
+                              value={user.role}
+                              onChange={(e) => updateUserRole(user.user_id, e.target.value)}
+                              className="px-2 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            >
+                              <option value="admin">مدير</option>
+                              <option value="accountant">محاسب</option>
+                              <option value="teacher">معلم</option>
+                            </select>
+                            <button
+                              onClick={() => removeUser(user.user_id, user.full_name || user.email || "المستخدم")}
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                              title="إزالة المستخدم"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -740,7 +676,6 @@ export default function SettingsManager() {
             )}
           </div>
 
-          {/* Permissions Info */}
           <div className="bg-blue-50/50 backdrop-blur-sm rounded-xl p-4 border border-blue-100">
             <div className="flex items-start gap-3">
               <Shield className="w-5 h-5 text-blue-600 mt-0.5" />
@@ -749,10 +684,7 @@ export default function SettingsManager() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2 text-sm text-blue-800">
                   <div className="flex items-center gap-2">
                     <Crown className="w-3 h-3" />
-                    <span>
-                      المالك: جميع الصلاحيات (إدارة المستخدمين، إعدادات المدرسة،
-                      جميع البيانات)
-                    </span>
+                    <span>المالك: جميع الصلاحيات (إدارة المستخدمين، إعدادات المدرسة، جميع البيانات)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <UserCheck className="w-3 h-3" />
@@ -778,9 +710,7 @@ export default function SettingsManager() {
         <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm border border-gray-100/50 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100">
             <h3 className="font-semibold text-gray-900">بيانات المدرسة</h3>
-            <p className="text-sm text-gray-500">
-              تعديل معلومات المدرسة الأساسية
-            </p>
+            <p className="text-sm text-gray-500">تعديل معلومات المدرسة الأساسية</p>
           </div>
 
           <form onSubmit={saveSchoolSettings} className="p-6 space-y-4">
@@ -794,12 +724,7 @@ export default function SettingsManager() {
                   <input
                     type="text"
                     value={schoolSettings.name}
-                    onChange={(e) =>
-                      setSchoolSettings({
-                        ...schoolSettings,
-                        name: e.target.value,
-                      })
-                    }
+                    onChange={(e) => setSchoolSettings({ ...schoolSettings, name: e.target.value })}
                     className="w-full pr-10 pl-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-gray-50/50"
                     required
                   />
@@ -815,12 +740,7 @@ export default function SettingsManager() {
                   <input
                     type="email"
                     value={schoolSettings.email}
-                    onChange={(e) =>
-                      setSchoolSettings({
-                        ...schoolSettings,
-                        email: e.target.value,
-                      })
-                    }
+                    onChange={(e) => setSchoolSettings({ ...schoolSettings, email: e.target.value })}
                     className="w-full pr-10 pl-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-gray-50/50"
                   />
                 </div>
@@ -835,12 +755,7 @@ export default function SettingsManager() {
                   <input
                     type="tel"
                     value={schoolSettings.phone}
-                    onChange={(e) =>
-                      setSchoolSettings({
-                        ...schoolSettings,
-                        phone: e.target.value,
-                      })
-                    }
+                    onChange={(e) => setSchoolSettings({ ...schoolSettings, phone: e.target.value })}
                     className="w-full pr-10 pl-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-gray-50/50"
                   />
                 </div>
@@ -855,12 +770,7 @@ export default function SettingsManager() {
                   <input
                     type="text"
                     value={schoolSettings.tax_number}
-                    onChange={(e) =>
-                      setSchoolSettings({
-                        ...schoolSettings,
-                        tax_number: e.target.value,
-                      })
-                    }
+                    onChange={(e) => setSchoolSettings({ ...schoolSettings, tax_number: e.target.value })}
                     className="w-full pr-10 pl-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-gray-50/50"
                   />
                 </div>
@@ -874,12 +784,7 @@ export default function SettingsManager() {
                   <MapPin className="absolute right-3 top-3 text-gray-400 w-5 h-5" />
                   <textarea
                     value={schoolSettings.address}
-                    onChange={(e) =>
-                      setSchoolSettings({
-                        ...schoolSettings,
-                        address: e.target.value,
-                      })
-                    }
+                    onChange={(e) => setSchoolSettings({ ...schoolSettings, address: e.target.value })}
                     className="w-full pr-10 pl-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-gray-50/50 resize-none"
                     rows={2}
                   />
@@ -927,18 +832,13 @@ export default function SettingsManager() {
       {/* Subscription Tab */}
       {activeTab === "subscription" && canManageSchool && (
         <div className="space-y-6">
-          {/* Current Plan Card */}
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-3">
                 <Crown className="w-8 h-8" />
                 <div>
-                  <h3 className="text-xl font-bold">
-                    باقة {getPlanName(subscription.plan)}
-                  </h3>
-                  <p className="text-white/80 text-sm mt-1">
-                    الاشتراك الحالي للمدرسة
-                  </p>
+                  <h3 className="text-xl font-bold">باقة {getPlanName(subscription.plan)}</h3>
+                  <p className="text-white/80 text-sm mt-1">الاشتراك الحالي للمدرسة</p>
                 </div>
               </div>
               <button
@@ -949,19 +849,15 @@ export default function SettingsManager() {
                 {upgradeLoading ? "جاري..." : "ترقية الباقة"}
               </button>
             </div>
-
+            
             {subscription.expires_at && (
               <div className="mt-4 pt-4 border-t border-white/20">
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4" />
                   <span className="text-sm">
-                    {isExpired
-                      ? "انتهى الاشتراك"
-                      : `ينتهي الاشتراك في ${new Date(subscription.expires_at).toLocaleDateString("ar-EG")}`}
+                    {isExpired ? "انتهى الاشتراك" : `ينتهي الاشتراك في ${new Date(subscription.expires_at).toLocaleDateString("ar-EG")}`}
                     {daysRemaining !== null && daysRemaining > 0 && (
-                      <span
-                        className={`mr-2 ${isExpiringSoon ? "text-yellow-300" : "text-white/80"}`}
-                      >
+                      <span className={`mr-2 ${isExpiringSoon ? "text-yellow-300" : "text-white/80"}`}>
                         (متبقي {daysRemaining} يوم)
                       </span>
                     )}
@@ -971,7 +867,6 @@ export default function SettingsManager() {
             )}
           </div>
 
-          {/* Features Grid */}
           <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm border border-gray-100/50 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100">
               <h3 className="font-semibold text-gray-900">مميزات الباقة</h3>
@@ -979,29 +874,12 @@ export default function SettingsManager() {
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[
-                  {
-                    name: "عدد الطلاب غير محدود",
-                    available: subscription.plan !== "free",
-                  },
-                  {
-                    name: "تقارير متقدمة",
-                    available: subscription.plan !== "free",
-                  },
+                  { name: "عدد الطلاب غير محدود", available: subscription.plan !== "free" },
+                  { name: "تقارير متقدمة", available: subscription.plan !== "free" },
                   { name: "تصدير البيانات", available: true },
-                  {
-                    name: "دعم فني 24/7",
-                    available:
-                      subscription.plan === "pro" ||
-                      subscription.plan === "enterprise",
-                  },
-                  {
-                    name: "API مخصص",
-                    available: subscription.plan === "enterprise",
-                  },
-                  {
-                    name: "تخصيص العلامة التجارية",
-                    available: subscription.plan === "enterprise",
-                  },
+                  { name: "دعم فني 24/7", available: subscription.plan === "pro" || subscription.plan === "enterprise" },
+                  { name: "API مخصص", available: subscription.plan === "enterprise" },
+                  { name: "تخصيص العلامة التجارية", available: subscription.plan === "enterprise" },
                 ].map((feature, index) => (
                   <div key={index} className="flex items-center gap-3">
                     {feature.available ? (
@@ -1009,11 +887,7 @@ export default function SettingsManager() {
                     ) : (
                       <X className="w-5 h-5 text-gray-300" />
                     )}
-                    <span
-                      className={
-                        feature.available ? "text-gray-700" : "text-gray-400"
-                      }
-                    >
+                    <span className={feature.available ? "text-gray-700" : "text-gray-400"}>
                       {feature.name}
                     </span>
                   </div>
@@ -1022,7 +896,6 @@ export default function SettingsManager() {
             </div>
           </div>
 
-          {/* Plans Comparison */}
           <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm border border-gray-100/50 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100">
               <h3 className="font-semibold text-gray-900">مقارنة الباقات</h3>
@@ -1031,22 +904,12 @@ export default function SettingsManager() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50/50">
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">
-                      الميزة
-                    </th>
-                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">
-                      مجاني
-                    </th>
-                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">
-                      أساسي
-                    </th>
-                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">
-                      احترافي
-                    </th>
-                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">
-                      مؤسسات
-                    </th>
-                  </tr>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">الميزة</th>
+                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">مجاني</th>
+                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">أساسي</th>
+                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">احترافي</th>
+                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">مؤسسات</th>
+                   </tr>
                 </thead>
                 <tbody>
                   <tr className="border-b border-gray-100">
@@ -1068,9 +931,7 @@ export default function SettingsManager() {
                     <td className="text-center py-3 px-4 text-sm">أساسي</td>
                     <td className="text-center py-3 px-4 text-sm">متقدم</td>
                     <td className="text-center py-3 px-4 text-sm">24/7</td>
-                    <td className="text-center py-3 px-4 text-sm">
-                      24/7 + أولوية
-                    </td>
+                    <td className="text-center py-3 px-4 text-sm">24/7 + أولوية</td>
                   </tr>
                   <tr>
                     <td className="py-3 px-4 text-sm">السعر الشهري</td>
