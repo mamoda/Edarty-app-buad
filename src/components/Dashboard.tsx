@@ -909,6 +909,8 @@ export default function Dashboard() {
                 </div>
               ) : currentView === "students" ? (
                 <StudentsManager onUpdate={handleRefresh} />
+              ) : currentView === "teachers" ? (
+                <TeachersManager onUpdate={handleRefresh} />
               ) : currentView === "fees" ? (
                 <FeesManager onUpdate={handleRefresh} />
               ) : currentView === "expenses" ? (
