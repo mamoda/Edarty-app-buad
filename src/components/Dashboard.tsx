@@ -46,6 +46,11 @@ import FeesManager from "./FeesManager";
 import ExpensesManager from "./ExpensesManager";
 import ProfitReport from "./ProfitReport";
 import ParentsManager from "./ParentsManager";
+import logo from "../assets/logo.png";
+import backgroundPattern from "../assets/background-pattern.png";
+import backgroundWave from "../assets/background-wave.png";
+import backgroundDots from "../assets/background-dots.png";
+
 
 type View =
   | "dashboard"
@@ -438,12 +443,29 @@ export default function Dashboard() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
+  const [currentBackground, setCurrentBackground] = useState(0);
   const [selectedPeriod, setSelectedPeriod] = useState("month");
   const [dataError, setDataError] = useState<string | null>(null);
   const [parentsCount, setParentsCount] = useState(0);
 
   const hasLoadedStatsRef = useRef(false);
   const isLoadingRef = useRef(false);
+
+  const backgrounds = [
+    {
+      image: backgroundPattern,
+      overlay: "from-blue-50/30 to-indigo-50/30",
+    },
+    {
+      image: backgroundWave,
+      overlay: "from-emerald-50/30 to-teal-50/30",
+    },
+    {
+      image: backgroundDots,
+      overlay: "from-purple-50/30 to-pink-50/30",
+    },
+  ];
+
 
   // تحميل عدد أولياء الأمور
   const loadParentsCount = async () => {
@@ -568,11 +590,36 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50/50 relative" dir="rtl">
-      {/* خلفية متحركة */}
+      {/* خلفية متحركة مع صورة */}
       <div className="fixed inset-0 z-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 to-indigo-50/30" />
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000"
+          style={{
+            backgroundImage: `url(${backgrounds[currentBackground].image})`,
+            opacity: 0.15,
+          }}
+        />
+
+        <div
+          className={`absolute inset-0 bg-gradient-to-br ${backgrounds[currentBackground].overlay} transition-all duration-1000`}
+        />
+
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(59,130,246,0.03),transparent_50%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(139,92,246,0.03),transparent_50%)]" />
+
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+          {backgrounds.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentBackground(index)}
+              className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                currentBackground === index
+                  ? "w-6 bg-blue-600"
+                  : "bg-gray-300 hover:bg-gray-400"
+              }`}
+            />
+          ))}
+        </div>
       </div>
 
       <div className="relative z-10">
