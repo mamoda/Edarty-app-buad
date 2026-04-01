@@ -463,7 +463,7 @@ export default function Dashboard() {
         .from("parents")
         .select("*", { count: "exact", head: true })
         .eq("school_id", schoolId);
-      
+
       if (!error) {
         setParentsCount(count || 0);
       }
@@ -483,16 +483,26 @@ export default function Dashboard() {
 
     try {
       const [studentsRes, feesRes, expensesRes] = await Promise.all([
-        supabase.from("students").select("*", { count: "exact" }).eq("school_id", schoolId),
+        supabase
+          .from("students")
+          .select("*", { count: "exact" })
+          .eq("school_id", schoolId),
         supabase.from("fees").select("amount").eq("school_id", schoolId),
         supabase.from("expenses").select("amount").eq("school_id", schoolId),
       ]);
 
       const totalStudents = studentsRes.count || 0;
-      const activeStudents = studentsRes.data?.filter((s) => s.status === "active").length || 0;
+      const activeStudents =
+        studentsRes.data?.filter((s) => s.status === "active").length || 0;
 
-      const totalRevenue = feesRes.data?.reduce((sum, fee) => sum + Number(fee.amount || 0), 0) || 0;
-      const totalExpenses = expensesRes.data?.reduce((sum, exp) => sum + Number(exp.amount || 0), 0) || 0;
+      const totalRevenue =
+        feesRes.data?.reduce((sum, fee) => sum + Number(fee.amount || 0), 0) ||
+        0;
+      const totalExpenses =
+        expensesRes.data?.reduce(
+          (sum, exp) => sum + Number(exp.amount || 0),
+          0,
+        ) || 0;
 
       setStats({
         totalStudents,
@@ -630,7 +640,9 @@ export default function Dashboard() {
 
                 <div>
                   <h1 className="text-xl font-bold text-gray-900">إدارتــي</h1>
-                  <p className="text-xs text-gray-500">{user?.email} • {role}</p>
+                  <p className="text-xs text-gray-500">
+                    {user?.email} • {role}
+                  </p>
                 </div>
               </div>
 
@@ -675,7 +687,15 @@ export default function Dashboard() {
                     </span>
                     {role && (
                       <span className="text-xs text-gray-500 mr-2">
-                        ({role === "owner" ? "مالك" : role === "accountant" ? "محاسب" : role === "teacher" ? "معلم" : "مشرف"})
+                        (
+                        {role === "owner"
+                          ? "مالك"
+                          : role === "accountant"
+                            ? "محاسب"
+                            : role === "teacher"
+                              ? "معلم"
+                              : "مشرف"}
+                        )
                       </span>
                     )}
                   </div>
@@ -688,14 +708,17 @@ export default function Dashboard() {
                   <span className="text-xs text-gray-600">
                     <span className="font-medium text-gray-900">
                       {formatNumber(stats.activeStudents)}
-                    </span> طالب نشط
+                    </span>{" "}
+                    طالب نشط
                   </span>
                 </div>
               </div>
 
               <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-50 rounded-full border border-green-100">
                 <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-[10px] font-medium text-green-700">مباشر</span>
+                <span className="text-[10px] font-medium text-green-700">
+                  مباشر
+                </span>
               </div>
             </div>
           </div>
@@ -750,7 +773,7 @@ export default function Dashboard() {
                     currentView={currentView}
                     onClick={() => handleViewChange("parents")}
                   />
-                  
+
                   {canManageFees && (
                     <ModernMenuItem
                       label="تحصيل المصاريف"
@@ -760,7 +783,7 @@ export default function Dashboard() {
                       onClick={() => handleViewChange("fees")}
                     />
                   )}
-                  
+
                   {canManageExpenses && (
                     <ModernMenuItem
                       label="التكاليف"
@@ -770,7 +793,7 @@ export default function Dashboard() {
                       onClick={() => handleViewChange("expenses")}
                     />
                   )}
-                  
+
                   <ModernMenuItem
                     label="تقرير الأرباح"
                     icon={TrendingUp}
@@ -778,7 +801,7 @@ export default function Dashboard() {
                     currentView={currentView}
                     onClick={() => handleViewChange("reports")}
                   />
-                  
+
                   <ModernMenuItem
                     label="الإعدادات"
                     icon={Settings}
@@ -814,9 +837,13 @@ export default function Dashboard() {
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h1 className="text-2xl font-semibold text-gray-900">لوحة التحكم</h1>
+                      <h1 className="text-2xl font-semibold text-gray-900">
+                        لوحة التحكم
+                      </h1>
                       <p className="text-sm text-gray-500 mt-1">
-                        <span className="text-blue-600 font-medium">مرحباً بعودتك</span>
+                        <span className="text-blue-600 font-medium">
+                          مرحباً بعودتك
+                        </span>
                       </p>
                     </div>
 
@@ -866,7 +893,9 @@ export default function Dashboard() {
                     <div className="flex items-center justify-center py-20">
                       <div className="relative">
                         <div className="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                        <p className="mt-4 text-gray-500">جاري تحميل البيانات...</p>
+                        <p className="mt-4 text-gray-500">
+                          جاري تحميل البيانات...
+                        </p>
                       </div>
                     </div>
                   ) : (
@@ -881,9 +910,13 @@ export default function Dashboard() {
                           color="from-blue-600 to-indigo-600"
                           subValue={`${formatNumber(stats.activeStudents)} نشط`}
                         />
-                        <ModernStatCard 
+                        <ModernStatCard
                           title="إجمالي المعلمين"
-                          value={stats.totalStudents > 0 ? Math.ceil(stats.totalStudents / 20) : 0}
+                          value={
+                            stats.totalStudents > 0
+                              ? Math.ceil(stats.totalStudents / 20)
+                              : 0
+                          }
                           icon={Briefcase}
                           color="from-emerald-600 to-teal-600"
                           subValue="تقديري بناءً على عدد الطلاب"
@@ -915,10 +948,6 @@ export default function Dashboard() {
                           trendValue={profitTrend.value}
                           color="from-purple-600 to-pink-600"
                         />
-                      </div>
-
-                      {/* إضافة بطاقة إحصائية لأولياء الأمور */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <ModernStatCard
                           title="أولياء الأمور"
                           value={parentsCount}
@@ -932,8 +961,12 @@ export default function Dashboard() {
                       <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-6 border border-gray-100/50">
                         <div className="flex items-center justify-between mb-4">
                           <div>
-                            <h3 className="font-semibold text-gray-900">نظرة عامة على الإيرادات</h3>
-                            <p className="text-xs text-gray-500 mt-1">آخر 7 أيام</p>
+                            <h3 className="font-semibold text-gray-900">
+                              نظرة عامة على الإيرادات
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-1">
+                              آخر 7 أيام
+                            </p>
                           </div>
                           <button className="p-2 hover:bg-gray-100/80 rounded-lg transition-colors duration-200">
                             <Maximize2 className="w-4 h-4 text-gray-500" />
@@ -942,12 +975,17 @@ export default function Dashboard() {
 
                         <div className="h-32 flex items-end gap-2">
                           {revenueData.map((value, i) => (
-                            <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                            <div
+                              key={i}
+                              className="flex-1 flex flex-col items-center gap-1"
+                            >
                               <div
                                 className="w-full bg-gradient-to-t from-blue-600 to-indigo-600 rounded-t-lg transition-all duration-500 hover:from-blue-500 hover:to-indigo-500"
                                 style={{ height: `${value}%` }}
                               ></div>
-                              <span className="text-xs text-gray-500">{days[i]}</span>
+                              <span className="text-xs text-gray-500">
+                                {days[i]}
+                              </span>
                             </div>
                           ))}
                         </div>
@@ -955,7 +993,9 @@ export default function Dashboard() {
 
                       {/* الإجراءات السريعة */}
                       <div>
-                        <h3 className="text-sm font-medium text-gray-700 mb-3">إجراءات سريعة</h3>
+                        <h3 className="text-sm font-medium text-gray-700 mb-3">
+                          إجراءات سريعة
+                        </h3>
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                           <QuickActionCard
                             title="إضافة طالب"
