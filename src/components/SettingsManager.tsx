@@ -1,17 +1,14 @@
 // src/components/SettingsManager.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Users,
   UserPlus,
-  Edit2,
   Trash2,
   X,
   Shield,
-  Settings,
   Save,
   RefreshCw,
   Crown,
-  CreditCard,
   Building2,
   Mail,
   Phone,
@@ -20,30 +17,28 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  Award,
   UserCheck,
-  UserX,
-  ChevronDown,
-  ChevronUp,
   Wallet,
   GraduationCap,
+  School,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
+import { SchoolUser } from "../types/database"; 
 
-interface SchoolUser {
+interface SchoolUserWithDetails {
   id: string;
   user_id: string;
-  email?: string;
-  full_name?: string;
+  email: string;
+  full_name: string;
   role: 'owner' | 'admin' | 'teacher' | 'accountant';
   created_at: string;
 }
 
 export default function SettingsManager() {
-  const { schoolId, user: currentUser, role: currentUserRole } = useAuth();
+  const { currentSchool, user: currentUser, allSchools, switchSchool } = useAuth();
   
-  const [users, setUsers] = useState<SchoolUser[]>([]);
+  const [users, setUsers] = useState<SchoolUserWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'users' | 'school' | 'subscription'>('users');
   const [showInviteForm, setShowInviteForm] = useState(false);
@@ -67,13 +62,26 @@ export default function SettingsManager() {
   
   // الاشتراك
   const [subscription, setSubscription] = useState({
-    plan: "free",
+    plan: "free" as 'free' | 'basic' | 'pro' | 'enterprise',
     expires_at: null as string | null,
   });
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
 
   // صلاحيات المستخدم الحالي
-  const canManageUsers = currentUserRole === "owner" || currentUserRole === "admin";
-  const canManageSchool = currentUserRole === "owner";
+  const currentRole = currentSchool?.role;
+  const canManageUsers = currentRole === "owner" || currentRole === "admin";
+  const canManageSchool = currentRole === "owner";
+  const schoolId = currentSchool?.schoolId;
+
+  // إنشاء قائمة المدارس المعالجة
+  const schoolOptions = useMemo(() => {
+    return allSchools.map(school => ({
+      id: school.school_id,
+      label: `${school.school_id.slice(0, 8)} - ${roleNames[school.role]}`,
+      role: school.role,
+      isPrimary: school.is_primary || false
+    }));
+  }, [allSchools]);
 
   useEffect(() => {
     if (schoolId) {
@@ -83,17 +91,22 @@ export default function SettingsManager() {
       loadSchoolSettings();
       loadSubscription();
     }
-  }, [schoolId]);
+  }, [schoolId, currentRole]);
 
   const loadUsers = async () => {
     if (!schoolId) return;
     
     setLoading(true);
     try {
-      // جلب مستخدمي المدرسة من جدول user_school_roles
+      // جلب مستخدمي المدرسة من جدول school_users
       const { data: schoolUsers, error: schoolUsersError } = await supabase
-        .from("user_school_roles")
-        .select("*")
+        .from("school_users")
+        .select(`
+          id,
+          user_id,
+          role,
+          created_at
+        `)
         .eq("school_id", schoolId);
       
       if (schoolUsersError) throw schoolUsersError;
@@ -109,14 +122,17 @@ export default function SettingsManager() {
         if (usersError) throw usersError;
         
         // دمج البيانات
-        const usersWithDetails = schoolUsers.map(su => ({
-          id: su.id,
-          user_id: su.user_id,
-          role: su.role,
-          created_at: su.created_at,
-          email: usersData?.find(u => u.id === su.user_id)?.email || su.user_id,
-          full_name: usersData?.find(u => u.id === su.user_id)?.full_name || "غير محدد",
-        }));
+        const usersWithDetails: SchoolUserWithDetails[] = schoolUsers.map(su => {
+          const userInfo = usersData?.find(u => u.id === su.user_id);
+          return {
+            id: su.id,
+            user_id: su.user_id,
+            role: su.role,
+            created_at: su.created_at,
+            email: userInfo?.email || su.user_id,
+            full_name: userInfo?.full_name || "غير محدد",
+          };
+        });
         
         setUsers(usersWithDetails);
       } else {
@@ -133,10 +149,9 @@ export default function SettingsManager() {
     if (!schoolId) return;
     
     try {
-      // جلب بيانات المدرسة
       const { data, error } = await supabase
         .from("schools")
-        .select("*")
+        .select("name, email, address, phone, tax_number")
         .eq("id", schoolId)
         .single();
       
@@ -160,7 +175,6 @@ export default function SettingsManager() {
     if (!schoolId) return;
     
     try {
-      // جلب بيانات الاشتراك
       const { data, error } = await supabase
         .from("schools")
         .select("subscription_plan, subscription_expires_at")
@@ -189,10 +203,10 @@ export default function SettingsManager() {
     setInviteSuccess("");
     
     try {
-      // التحقق من وجود المستخدم في النظام
+      // البحث عن المستخدم في جدول users
       const { data: existingUser, error: userError } = await supabase
         .from("users")
-        .select("id, email")
+        .select("id, email, full_name")
         .eq("email", inviteEmail)
         .maybeSingle();
       
@@ -204,9 +218,9 @@ export default function SettingsManager() {
         return;
       }
       
-      // التحقق من أن المستخدم ليس مضافاً بالفعل
+      // التحقق من أن المستخدم ليس مضافاً بالفعل للمدرسة
       const { data: existingRole, error: roleError } = await supabase
-        .from("user_school_roles")
+        .from("school_users")
         .select("id")
         .eq("school_id", schoolId)
         .eq("user_id", existingUser.id)
@@ -222,7 +236,7 @@ export default function SettingsManager() {
       
       // إضافة المستخدم للمدرسة
       const { error: insertError } = await supabase
-        .from("user_school_roles")
+        .from("school_users")
         .insert({
           user_id: existingUser.id,
           school_id: schoolId,
@@ -248,9 +262,16 @@ export default function SettingsManager() {
   const updateUserRole = async (userId: string, newRole: string) => {
     if (!schoolId) return;
     
+    // منع تغيير دور المالك
+    const targetUser = users.find(u => u.user_id === userId);
+    if (targetUser?.role === "owner") {
+      alert("لا يمكن تغيير صلاحية المالك");
+      return;
+    }
+    
     try {
       const { error } = await supabase
-        .from("user_school_roles")
+        .from("school_users")
         .update({ role: newRole })
         .eq("user_id", userId)
         .eq("school_id", schoolId);
@@ -258,6 +279,7 @@ export default function SettingsManager() {
       if (error) throw error;
       
       loadUsers();
+      alert("تم تحديث صلاحية المستخدم بنجاح");
     } catch (error) {
       console.error("Error updating user role:", error);
       alert("حدث خطأ أثناء تحديث صلاحية المستخدم");
@@ -267,9 +289,22 @@ export default function SettingsManager() {
   const removeUser = async (userId: string, userName: string) => {
     if (!confirm(`هل أنت متأكد من إزالة ${userName} من المدرسة؟`)) return;
     
+    // منع إزالة المالك
+    const targetUser = users.find(u => u.user_id === userId);
+    if (targetUser?.role === "owner") {
+      alert("لا يمكن إزالة المالك من المدرسة");
+      return;
+    }
+    
+    // منع إزالة النفس
+    if (userId === currentUser?.id) {
+      alert("لا يمكنك إزالة نفسك من المدرسة");
+      return;
+    }
+    
     try {
       const { error } = await supabase
-        .from("user_school_roles")
+        .from("school_users")
         .delete()
         .eq("user_id", userId)
         .eq("school_id", schoolId);
@@ -277,6 +312,7 @@ export default function SettingsManager() {
       if (error) throw error;
       
       loadUsers();
+      alert("تم إزالة المستخدم بنجاح");
     } catch (error) {
       console.error("Error removing user:", error);
       alert("حدث خطأ أثناء إزالة المستخدم");
@@ -306,7 +342,6 @@ export default function SettingsManager() {
       if (error) throw error;
       
       setSchoolSaveSuccess("تم حفظ إعدادات المدرسة بنجاح");
-      
       setTimeout(() => setSchoolSaveSuccess(""), 3000);
     } catch (error) {
       console.error("Error saving school settings:", error);
@@ -321,8 +356,6 @@ export default function SettingsManager() {
     alert("سيتم التوجيه لصفحة الترقية قريباً");
     setUpgradeLoading(false);
   };
-
-  const [upgradeLoading, setUpgradeLoading] = useState(false);
 
   const getPlanName = (plan: string) => {
     switch (plan) {
@@ -354,8 +387,85 @@ export default function SettingsManager() {
     accountant: "bg-orange-100 text-orange-700",
   };
 
+  const roleNames = {
+    owner: "مالك",
+    admin: "مدير",
+    teacher: "معلم",
+    accountant: "محاسب",
+  };
+
+  // إذا كان المستخدم ليس لديه مدرسة محددة
+  if (!currentSchool && allSchools.length > 0) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center max-w-md">
+          <School className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">اختر مدرسة</h3>
+          <p className="text-gray-500 mb-4">أنت مسجل في عدة مدارس، يرجى اختيار مدرسة للعمل عليها</p>
+          <div className="space-y-2">
+            {schoolOptions.map((school) => (
+              <button
+                key={school.id}
+                onClick={() => switchSchool(school.id)}
+                className="w-full p-4 text-right bg-white rounded-lg border hover:border-blue-500 hover:bg-blue-50 transition-all"
+              >
+                <div className="font-medium text-gray-900">
+                  {currentSchool?.school_id === school.id ? "✓ " : ""}
+                  مدرسة #{school.id.slice(0, 8)}
+                </div>
+                <div className="text-sm text-gray-500 mt-1">
+                  الدور: {roleNames[school.role as keyof typeof roleNames]}
+                  {school.isPrimary && " (أساسية)"}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentSchool) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد مدرسة</h3>
+          <p className="text-gray-500">لم يتم العثور على مدرسة مرتبطة بحسابك</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {/* School Switcher - إذا كان المستخدم في عدة مدارس */}
+      {allSchools.length > 1 && (
+        <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-4 border border-gray-100/50">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-2">
+              <School className="w-5 h-5 text-gray-500" />
+              <span className="text-sm text-gray-600">المدرسة الحالية:</span>
+              <span className="font-medium text-gray-900">{schoolSettings.name || "غير محدد"}</span>
+              <span className={`px-2 py-0.5 rounded-full text-xs ${roleColors[currentRole || 'teacher']}`}>
+                {roleNames[currentRole || 'teacher']}
+              </span>
+            </div>
+            <select
+              value={schoolId || ""}
+              onChange={(e) => switchSchool(e.target.value)}
+              className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            >
+              {schoolOptions.map((school) => (
+                <option key={school.id} value={school.id}>
+                  {school.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -542,11 +652,11 @@ export default function SettingsManager() {
                       </div>
                       
                       <div className="flex items-center gap-3">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${roleColors[user.role as keyof typeof roleColors]}`}>
-                          {user.role === "owner" ? "مالك" : user.role === "admin" ? "مدير" : user.role === "accountant" ? "محاسب" : "معلم"}
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${roleColors[user.role]}`}>
+                          {roleNames[user.role]}
                         </span>
                         
-                        {user.user_id !== currentUser?.id && canManageUsers && (
+                        {user.user_id !== currentUser?.id && user.role !== "owner" && canManageUsers && (
                           <>
                             <select
                               value={user.role}
