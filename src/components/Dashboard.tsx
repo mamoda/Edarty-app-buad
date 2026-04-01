@@ -891,6 +891,13 @@ export default function Dashboard() {
                           color="from-blue-600 to-indigo-600"
                           subValue={`${formatNumber(stats.activeStudents)} نشط`}
                         />
+                        <ModernStatCard 
+                          title="إجمالي المعلمين"
+                          value={stats.totalStudents > 0 ? Math.ceil(stats.totalStudents / 20) : 0} // افتراض 1 معلم لكل 20 طالب
+                          icon={Briefcase}
+                          color="from-emerald-600 to-teal-600"
+                          subValue="تقديري بناءً على عدد الطلاب"
+                        />
                         <ModernStatCard
                           title="إجمالي الإيرادات"
                           value={stats.totalRevenue}
