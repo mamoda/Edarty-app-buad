@@ -40,6 +40,7 @@ import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import type { Statistics } from "../types/database";
 import StudentsManager from "./StudentsManager";
+import TeachersManager from "./TeachersManager";
 import FeesManager from "./FeesManager";
 import ExpensesManager from "./ExpensesManager";
 import ProfitReport from "./ProfitReport";
