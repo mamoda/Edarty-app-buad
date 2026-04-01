@@ -24,6 +24,26 @@ export interface Student {
   updated_at: string;
 }
 
+
+
+export interface Teacher {
+  id: string;
+  school_id: string;
+  name: string;
+  phone: string;
+  email: string;
+  specialization: string;
+  salary: number;
+  hire_date: string;
+  status: 'active' | 'inactive';
+  address?: string | null;
+  qualifications?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+
 export interface Fee {
   id: string;
   school_id: string;
@@ -54,4 +74,18 @@ export interface Statistics {
   totalRevenue: number;
   totalExpenses: number;
   netProfit: number;
+}
+
+
+export interface TeacherSalary {
+  id: string;
+  teacher_id: string | null;
+  month: number;
+  year: number;
+  amount: number;
+  status: 'pending' | 'paid' | 'cancelled';
+  payment_date: string | null;
+  notes: string | null;
+  created_at: string;
+  school_id: string;
 }
