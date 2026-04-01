@@ -50,6 +50,7 @@ import logo from "../assets/logo.png";
 import backgroundPattern from "../assets/background-pattern.png";
 import backgroundWave from "../assets/background-wave.png";
 import backgroundDots from "../assets/background-dots.png";
+import UsersManager from "./UsersManager";
 
 
 type View =
@@ -1015,6 +1016,8 @@ export default function Dashboard() {
                 <ExpensesManager onUpdate={handleRefresh} />
               ) : currentView === "reports" ? (
                 <ProfitReport />
+              ) : currentView === "settings" ? (
+                <UsersManager />
               ) : (
                 <div className="bg-white/90 backdrop-blur-xl rounded-xl p-8 text-center">
                   <p className="text-gray-500">جاري التطوير...</p>
