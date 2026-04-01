@@ -1,3 +1,5 @@
+// src/types/database.ts
+
 export interface schools {
   id: string;
   name: string;
@@ -8,9 +10,10 @@ export interface school_user {
   school_id: string;
   role: 'owner' | 'admin' | 'teacher' | 'accountant';
 }
-// Define for testing purposes
 
-// this is the center of our app, it will be used to store all the data related to students, fees, expenses and statistics
+// ============================================
+// الطلاب
+// ============================================
 export interface Student {
   id: string;
   school_id: string;
@@ -24,8 +27,9 @@ export interface Student {
   updated_at: string;
 }
 
-
-
+// ============================================
+// المعلمين
+// ============================================
 export interface Teacher {
   id: string;
   school_id: string;
@@ -43,7 +47,25 @@ export interface Teacher {
   updated_at: string;
 }
 
+// ============================================
+// رواتب المعلمين
+// ============================================
+export interface TeacherSalary {
+  id: string;
+  teacher_id: string | null;
+  month: number;
+  year: number;
+  amount: number;
+  status: 'pending' | 'paid' | 'cancelled';
+  payment_date: string | null;
+  notes: string | null;
+  created_at: string;
+  school_id: string;
+}
 
+// ============================================
+// المصروفات والرسوم
+// ============================================
 export interface Fee {
   id: string;
   school_id: string;
@@ -68,6 +90,9 @@ export interface Expense {
   created_at: string;
 }
 
+// ============================================
+// إحصائيات
+// ============================================
 export interface Statistics {
   totalStudents: number;
   activeStudents: number;
@@ -76,16 +101,172 @@ export interface Statistics {
   netProfit: number;
 }
 
-
-export interface TeacherSalary {
+// ============================================
+// أولياء الأمور (جديد)
+// ============================================
+export interface Parent {
   id: string;
-  teacher_id: string | null;
-  month: number;
-  year: number;
-  amount: number;
-  status: 'pending' | 'paid' | 'cancelled';
-  payment_date: string | null;
-  notes: string | null;
-  created_at: string;
   school_id: string;
+  full_name: string;
+  phone: string;
+  email: string;
+  address: string;
+  occupation: string;
+  relationship: 'father' | 'mother' | 'guardian';
+  national_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StudentParent {
+  id: string;
+  student_id: string;
+  parent_id: string;
+  is_primary: boolean;
+  created_at: string;
+}
+
+// ============================================
+// السلوك والتقييمات (جديد)
+// ============================================
+export interface StudentBehavior {
+  id: string;
+  student_id: string;
+  teacher_id: string;
+  school_id: string;
+  date: string;
+  type: 'positive' | 'negative' | 'warning';
+  category: 'attendance' | 'homework' | 'conduct' | 'participation' | 'other';
+  description: string;
+  points: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TeacherEvaluation {
+  id: string;
+  student_id: string;
+  teacher_id: string;
+  school_id: string;
+  subject: string;
+  date: string;
+  evaluation_type: 'academic' | 'behavioral' | 'social';
+  rating: number; // 1-5
+  comments: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================
+// الامتحانات والنتائج (جديد)
+// ============================================
+export interface Exam {
+  id: string;
+  school_id: string;
+  name: string;
+  term: 'first' | 'second' | 'final';
+  academic_year: string;
+  start_date: string;
+  end_date: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Subject {
+  id: string;
+  school_id: string;
+  name: string;
+  teacher_id?: string;
+  max_score: number;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExamResult {
+  id: string;
+  student_id: string;
+  exam_id: string;
+  subject_id: string;
+  school_id: string;
+  exam_name: string;
+  exam_date: string;
+  max_score: number;
+  obtained_score: number;
+  percentage: number;
+  grade: string;
+  term: 'first' | 'second' | 'final';
+  academic_year: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================
+// الحضور والغياب (جديد)
+// ============================================
+export interface StudentAttendance {
+  id: string;
+  student_id: string;
+  school_id: string;
+  date: string;
+  status: 'present' | 'absent' | 'late' | 'excused';
+  check_in_time?: string;
+  check_out_time?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================
+// المعاملات المالية للطلاب (جديد)
+// ============================================
+export interface StudentFinancial {
+  id: string;
+  student_id: string;
+  school_id: string;
+  fee_type: 'tuition' | 'transport' | 'books' | 'activities' | 'other';
+  amount: number;
+  paid_amount: number;
+  remaining_amount: number;
+  due_date: string;
+  status: 'paid' | 'partial' | 'unpaid' | 'overdue';
+  payment_date?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================
+// الأنواع المركبة (جديد)
+// ============================================
+export interface StudentWithDetails {
+  student: Student;
+  behaviors: StudentBehavior[];
+  evaluations: TeacherEvaluation[];
+  examResults: ExamResult[];
+  financial: StudentFinancial[];
+  attendance: StudentAttendance[];
+  parents?: Parent[];
+}
+
+export interface EnhancedStatistics extends Statistics {
+  totalRefunds: number;
+  netRevenue: number;
+  paidStudents: number;
+  partialPaidStudents: number;
+  unpaidStudents: number;
+  collectionRate: number;
+  cashPayments: number;
+  cardPayments: number;
+  bankTransferPayments: number;
+  checkPayments: number;
+  todayCollections: number;
+  thisWeekCollections: number;
+  thisMonthCollections: number;
+  totalSalaries: number;
+  activeTeachers: number;
+  totalTeachers: number;
+  totalParents: number;
 }
