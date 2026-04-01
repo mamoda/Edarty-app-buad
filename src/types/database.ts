@@ -1,14 +1,41 @@
 // src/types/database.ts
 
-export interface schools {
+// ============================================
+// الأنواع الأساسية
+// ============================================
+
+export interface School {
   id: string;
   name: string;
+  email?: string;
+  address?: string;
+  phone?: string;
+  tax_number?: string;
+  subscription_plan?: 'free' | 'basic' | 'pro' | 'enterprise';
+  subscription_expires_at?: string;
+  features?: string[];
+  logo_url?: string;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface school_user {
+export interface SchoolUser {
+  id?: string;
   user_id: string;
   school_id: string;
   role: 'owner' | 'admin' | 'teacher' | 'accountant';
+  is_primary?: boolean;
+  created_at?: string;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  full_name?: string;
+  avatar_url?: string;
+  phone?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 // ============================================
@@ -52,7 +79,8 @@ export interface Teacher {
 // ============================================
 export interface TeacherSalary {
   id: string;
-  teacher_id: string | null;
+  teacher_id: string;
+  school_id: string;
   month: number;
   year: number;
   amount: number;
@@ -60,7 +88,7 @@ export interface TeacherSalary {
   payment_date: string | null;
   notes: string | null;
   created_at: string;
-  school_id: string;
+  updated_at: string;
 }
 
 // ============================================
@@ -76,6 +104,7 @@ export interface Fee {
   academic_year: string;
   notes: string;
   created_at: string;
+  updated_at: string;
   student?: Student;
 }
 
@@ -88,6 +117,7 @@ export interface Expense {
   expense_date: string;
   notes: string;
   created_at: string;
+  updated_at: string;
 }
 
 // ============================================
@@ -102,7 +132,7 @@ export interface Statistics {
 }
 
 // ============================================
-// أولياء الأمور (جديد)
+// أولياء الأمور
 // ============================================
 export interface Parent {
   id: string;
@@ -127,7 +157,7 @@ export interface StudentParent {
 }
 
 // ============================================
-// السلوك والتقييمات (جديد)
+// السلوك والتقييمات
 // ============================================
 export interface StudentBehavior {
   id: string;
@@ -151,14 +181,14 @@ export interface TeacherEvaluation {
   subject: string;
   date: string;
   evaluation_type: 'academic' | 'behavioral' | 'social';
-  rating: number; // 1-5
+  rating: number;
   comments: string;
   created_at: string;
   updated_at: string;
 }
 
 // ============================================
-// الامتحانات والنتائج (جديد)
+// الامتحانات والنتائج
 // ============================================
 export interface Exam {
   id: string;
@@ -204,7 +234,7 @@ export interface ExamResult {
 }
 
 // ============================================
-// الحضور والغياب (جديد)
+// الحضور والغياب
 // ============================================
 export interface StudentAttendance {
   id: string;
@@ -220,7 +250,7 @@ export interface StudentAttendance {
 }
 
 // ============================================
-// المعاملات المالية للطلاب (جديد)
+// المعاملات المالية للطلاب
 // ============================================
 export interface StudentFinancial {
   id: string;
@@ -239,7 +269,24 @@ export interface StudentFinancial {
 }
 
 // ============================================
-// الأنواع المركبة (جديد)
+// سجل الأنشطة
+// ============================================
+export interface ActivityLog {
+  id: string;
+  user_id: string;
+  school_id: string;
+  action: string;
+  entity_type: string;
+  entity_id?: string;
+  old_data?: any;
+  new_data?: any;
+  ip_address?: string;
+  user_agent?: string;
+  created_at: string;
+}
+
+// ============================================
+// الأنواع المركبة
 // ============================================
 export interface StudentWithDetails {
   student: Student;

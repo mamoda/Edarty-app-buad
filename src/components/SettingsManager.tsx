@@ -30,7 +30,6 @@ import {
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
-import { useSchoolData } from "../hooks/useSchoolData";
 
 interface SchoolUser {
   id: string;
@@ -41,18 +40,8 @@ interface SchoolUser {
   created_at: string;
 }
 
-interface Invitation {
-  id: string;
-  email: string;
-  role: string;
-  token: string;
-  expires_at: string;
-  created_at: string;
-}
-
 export default function SettingsManager() {
   const { schoolId, user: currentUser, role: currentUserRole } = useAuth();
-  const { schoolName, schoolEmail, schoolAddress, schoolPhone, schoolTaxNumber, refreshSchoolData } = useSchoolData();
   
   const [users, setUsers] = useState<SchoolUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,7 +60,6 @@ export default function SettingsManager() {
     address: "",
     phone: "",
     tax_number: "",
-    logo_url: "",
   });
   const [schoolLoading, setSchoolLoading] = useState(false);
   const [schoolSaveSuccess, setSchoolSaveSuccess] = useState("");
@@ -81,20 +69,20 @@ export default function SettingsManager() {
   const [subscription, setSubscription] = useState({
     plan: "free",
     expires_at: null as string | null,
-    features: [] as string[],
   });
-  const [upgradeLoading, setUpgradeLoading] = useState(false);
 
   // صلاحيات المستخدم الحالي
   const canManageUsers = currentUserRole === "owner" || currentUserRole === "admin";
   const canManageSchool = currentUserRole === "owner";
 
   useEffect(() => {
-    if (schoolId && canManageUsers) {
-      loadUsers();
+    if (schoolId) {
+      if (canManageUsers) {
+        loadUsers();
+      }
+      loadSchoolSettings();
+      loadSubscription();
     }
-    loadSchoolSettings();
-    loadSubscription();
   }, [schoolId]);
 
   const loadUsers = async () => {
@@ -102,10 +90,10 @@ export default function SettingsManager() {
     
     setLoading(true);
     try {
-      // جلب مستخدمي المدرسة مع بياناتهم من جدول users
+      // جلب مستخدمي المدرسة من جدول user_school_roles
       const { data: schoolUsers, error: schoolUsersError } = await supabase
         .from("user_school_roles")
-        .select("id, user_id, role, created_at")
+        .select("*")
         .eq("school_id", schoolId);
       
       if (schoolUsersError) throw schoolUsersError;
@@ -122,7 +110,10 @@ export default function SettingsManager() {
         
         // دمج البيانات
         const usersWithDetails = schoolUsers.map(su => ({
-          ...su,
+          id: su.id,
+          user_id: su.user_id,
+          role: su.role,
+          created_at: su.created_at,
           email: usersData?.find(u => u.id === su.user_id)?.email || su.user_id,
           full_name: usersData?.find(u => u.id === su.user_id)?.full_name || "غير محدد",
         }));
@@ -142,9 +133,10 @@ export default function SettingsManager() {
     if (!schoolId) return;
     
     try {
+      // جلب بيانات المدرسة
       const { data, error } = await supabase
         .from("schools")
-        .select("name, email, address, phone, tax_number, logo_url")
+        .select("*")
         .eq("id", schoolId)
         .single();
       
@@ -157,7 +149,6 @@ export default function SettingsManager() {
           address: data.address || "",
           phone: data.phone || "",
           tax_number: data.tax_number || "",
-          logo_url: data.logo_url || "",
         });
       }
     } catch (error) {
@@ -169,9 +160,10 @@ export default function SettingsManager() {
     if (!schoolId) return;
     
     try {
+      // جلب بيانات الاشتراك
       const { data, error } = await supabase
         .from("schools")
-        .select("subscription_plan, subscription_expires_at, features")
+        .select("subscription_plan, subscription_expires_at")
         .eq("id", schoolId)
         .single();
       
@@ -181,7 +173,6 @@ export default function SettingsManager() {
         setSubscription({
           plan: data.subscription_plan || "free",
           expires_at: data.subscription_expires_at,
-          features: data.features || [],
         });
       }
     } catch (error) {
@@ -309,14 +300,12 @@ export default function SettingsManager() {
           address: schoolSettings.address,
           phone: schoolSettings.phone,
           tax_number: schoolSettings.tax_number,
-          logo_url: schoolSettings.logo_url,
         })
         .eq("id", schoolId);
       
       if (error) throw error;
       
       setSchoolSaveSuccess("تم حفظ إعدادات المدرسة بنجاح");
-      refreshSchoolData();
       
       setTimeout(() => setSchoolSaveSuccess(""), 3000);
     } catch (error) {
@@ -329,10 +318,11 @@ export default function SettingsManager() {
 
   const handleUpgrade = async () => {
     setUpgradeLoading(true);
-    // هنا يمكن إضافة منطق الترقية
     alert("سيتم التوجيه لصفحة الترقية قريباً");
     setUpgradeLoading(false);
   };
+
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
 
   const getPlanName = (plan: string) => {
     switch (plan) {
@@ -356,13 +346,6 @@ export default function SettingsManager() {
   const daysRemaining = getDaysRemaining();
   const isExpiringSoon = daysRemaining !== null && daysRemaining <= 7 && daysRemaining > 0;
   const isExpired = daysRemaining !== null && daysRemaining <= 0;
-
-  const roleLabels = {
-    owner: "مالك",
-    admin: "مدير",
-    teacher: "معلم",
-    accountant: "محاسب",
-  };
 
   const roleColors = {
     owner: "bg-purple-100 text-purple-700",
@@ -559,26 +542,29 @@ export default function SettingsManager() {
                       </div>
                       
                       <div className="flex items-center gap-3">
-                        <select
-                          value={user.role}
-                          onChange={(e) => updateUserRole(user.user_id, e.target.value)}
-                          className={`px-3 py-1 rounded-full text-xs font-medium border-0 focus:ring-2 focus:ring-blue-500 ${roleColors[user.role as keyof typeof roleColors]}`}
-                          disabled={user.user_id === currentUser?.id}
-                        >
-                          <option value="owner">مالك</option>
-                          <option value="admin">مدير</option>
-                          <option value="accountant">محاسب</option>
-                          <option value="teacher">معلم</option>
-                        </select>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${roleColors[user.role as keyof typeof roleColors]}`}>
+                          {user.role === "owner" ? "مالك" : user.role === "admin" ? "مدير" : user.role === "accountant" ? "محاسب" : "معلم"}
+                        </span>
                         
-                        {user.user_id !== currentUser?.id && (
-                          <button
-                            onClick={() => removeUser(user.user_id, user.full_name || user.email || "المستخدم")}
-                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                            title="إزالة المستخدم"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                        {user.user_id !== currentUser?.id && canManageUsers && (
+                          <>
+                            <select
+                              value={user.role}
+                              onChange={(e) => updateUserRole(user.user_id, e.target.value)}
+                              className="px-2 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            >
+                              <option value="admin">مدير</option>
+                              <option value="accountant">محاسب</option>
+                              <option value="teacher">معلم</option>
+                            </select>
+                            <button
+                              onClick={() => removeUser(user.user_id, user.full_name || user.email || "المستخدم")}
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                              title="إزالة المستخدم"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
