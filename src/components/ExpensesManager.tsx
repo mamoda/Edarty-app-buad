@@ -1,6 +1,6 @@
-// src/components/ExpensesManager.tsx (النسخة المحسنة)
+// src/components/ExpensesManager.tsx
 import { useState, useEffect } from "react";
-import { TrendingDown, Plus, Edit2, Trash2, Search, X, Calendar, ChevronDown } from "lucide-react";
+import { TrendingDown, Plus, Edit2, Trash2, Search, X, Calendar } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { Expense } from "../types/database";
@@ -54,9 +54,14 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
 
     setLoading(true);
     try {
-      // فلترة المصروفات حسب الشهر والسنة
+      // حساب أول يوم في الشهر
       const startDate = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`;
-      const endDate = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-31`;
+      
+      // حساب آخر يوم في الشهر بشكل صحيح
+      const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
+      const endDate = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-${lastDay}`;
+
+      console.log(`📅 Loading expenses from ${startDate} to ${endDate}`);
 
       const { data, error } = await supabase
         .from("expenses")
@@ -177,10 +182,8 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
     "أخرى",
   ];
 
-  // حساب إجمالي المصروفات للشهر الحالي
   const totalExpensesThisMonth = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
 
-  // حساب المصروفات حسب الفئة للشهر الحالي
   const categoryTotals = categories
     .map((cat) => ({
       category: cat,
@@ -333,10 +336,7 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
             {categoryTotals.map(({ category, total }) => {
               const percentage = (total / totalExpensesThisMonth) * 100;
               return (
-                <div
-                  key={category}
-                  className="p-3 bg-gray-50 rounded-xl hover:shadow-md transition-all"
-                >
+                <div key={category} className="p-3 bg-gray-50 rounded-xl hover:shadow-md transition-all">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700">{category}</span>
                     <span className="text-sm font-bold text-red-600">
@@ -373,7 +373,7 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
         </div>
       </div>
 
-      {/* Add/Edit Form Modal */}
+      {/* Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
@@ -381,112 +381,80 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
               <h3 className="text-xl font-bold text-gray-900">
                 {editingExpense ? "تعديل المصروف" : "إضافة مصروف جديد"}
               </h3>
-              <button
-                onClick={resetForm}
-                className="p-1 text-gray-400 hover:text-gray-600 rounded-lg transition-colors"
-              >
+              <button onClick={resetForm} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg">
                 <X className="w-6 h-6" />
               </button>
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  فئة المصروف <span className="text-red-500">*</span>
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">فئة المصروف *</label>
                 <select
                   value={formData.category}
-                  onChange={(e) =>
-                    setFormData({ ...formData, category: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none bg-gray-50/50"
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 bg-gray-50/50"
                   required
                 >
                   <option value="">اختر الفئة</option>
                   {categories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
+                    <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  الوصف <span className="text-red-500">*</span>
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">الوصف *</label>
                 <input
                   type="text"
                   value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none bg-gray-50/50"
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 bg-gray-50/50"
                   placeholder="مثال: راتب شهر يناير"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  المبلغ (ج.م) <span className="text-red-500">*</span>
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">المبلغ (ج.م) *</label>
                 <input
                   type="number"
                   step="0.01"
                   min="0"
                   value={formData.amount}
-                  onChange={(e) =>
-                    setFormData({ ...formData, amount: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none bg-gray-50/50"
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 bg-gray-50/50"
                   placeholder="0.00"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  تاريخ المصروف <span className="text-red-500">*</span>
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">تاريخ المصروف *</label>
                 <input
                   type="date"
                   value={formData.expense_date}
-                  onChange={(e) =>
-                    setFormData({ ...formData, expense_date: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none bg-gray-50/50"
+                  onChange={(e) => setFormData({ ...formData, expense_date: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 bg-gray-50/50"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  ملاحظات
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">ملاحظات</label>
                 <textarea
                   value={formData.notes}
-                  onChange={(e) =>
-                    setFormData({ ...formData, notes: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none bg-gray-50/50 resize-none"
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 bg-gray-50/50 resize-none"
                   rows={3}
                   placeholder="أي ملاحظات إضافية..."
                 />
               </div>
 
               <div className="flex gap-3 pt-4">
-                <button
-                  type="submit"
-                  className="flex-1 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white py-2.5 px-4 rounded-xl transition-all duration-300 font-medium"
-                >
+                <button type="submit" className="flex-1 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white py-2.5 rounded-xl font-medium">
                   {editingExpense ? "حفظ التعديلات" : "إضافة المصروف"}
                 </button>
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl transition-all duration-300 font-medium"
-                >
+                <button type="button" onClick={resetForm} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl font-medium">
                   إلغاء
                 </button>
               </div>
@@ -498,103 +466,69 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
       {/* Expenses List */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="relative">
-            <div className="w-10 h-10 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-            <p className="mt-4 text-gray-500">جاري تحميل البيانات...</p>
-          </div>
+          <div className="w-10 h-10 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
       ) : filteredExpenses.length === 0 ? (
-        <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-12 text-center border border-gray-100/50">
+        <div className="bg-white/90 backdrop-blur-xl rounded-xl p-12 text-center border border-gray-100/50">
           <TrendingDown className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            لا توجد مصروفات
-          </h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد مصروفات</h3>
           <p className="text-gray-600 mb-6">
             {searchTerm ? "لا توجد نتائج للبحث" : `لم يتم تسجيل أي مصروفات لشهر ${getMonthName(selectedMonth)} ${selectedYear}`}
           </p>
-          <button
-            onClick={() => setShowForm(true)}
-            className="bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white px-6 py-2 rounded-xl transition-all duration-300 shadow-md"
-          >
+          <button onClick={() => setShowForm(true)} className="bg-gradient-to-r from-red-600 to-rose-600 text-white px-6 py-2 rounded-xl">
             إضافة أول مصروف
           </button>
         </div>
       ) : (
         <div className="grid gap-4">
           {filteredExpenses.map((expense) => (
-            <div
-              key={expense.id}
-              className="group bg-white/90 backdrop-blur-xl rounded-xl shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden border border-gray-100/50 hover:border-gray-200/80"
-            >
-              <div className="relative p-6">
+            <div key={expense.id} className="group bg-white/90 backdrop-blur-xl rounded-xl shadow-sm hover:shadow-xl transition-all overflow-hidden border border-gray-100/50">
+              <div className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-3 flex-wrap">
+                    <div className="flex items-center gap-3 mb-3">
                       <div className="p-2 bg-red-100 rounded-lg">
                         <TrendingDown className="w-5 h-5 text-red-600" />
                       </div>
-                      <h3 className="text-lg font-bold text-gray-900">
-                        {expense.description}
-                      </h3>
-                      <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
-                        {expense.category}
-                      </span>
+                      <h3 className="text-lg font-bold text-gray-900">{expense.description}</h3>
+                      <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs">{expense.category}</span>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="flex items-center gap-2 text-sm">
                         <span className="text-gray-600">المبلغ:</span>
-                        <span className="font-bold text-red-600">
-                          {formatNumber(expense.amount)} ج.م
-                        </span>
+                        <span className="font-bold text-red-600">{formatNumber(expense.amount)} ج.م</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm">
                         <Calendar className="w-4 h-4 text-gray-400" />
                         <span className="text-gray-600">التاريخ:</span>
-                        <span className="font-medium text-gray-900">
-                          {new Date(expense.expense_date).toLocaleDateString('ar-EG')}
-                        </span>
+                        <span>{new Date(expense.expense_date).toLocaleDateString('ar-EG')}</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm">
                         <span className="text-gray-600">نسبة من الإجمالي:</span>
-                        <span className="font-medium text-gray-900">
-                          {((expense.amount / totalExpensesThisMonth) * 100).toFixed(1)}%
-                        </span>
+                        <span className="font-medium">{((expense.amount / totalExpensesThisMonth) * 100).toFixed(1)}%</span>
                       </div>
                     </div>
 
                     {expense.notes && (
-                      <div className="mt-3 flex items-start gap-2 text-sm">
-                        <span className="text-gray-600">ملاحظات:</span>
-                        <span className="text-gray-700">{expense.notes}</span>
-                      </div>
+                      <p className="mt-2 text-sm text-gray-600">
+                        <span className="font-medium">ملاحظات:</span> {expense.notes}
+                      </p>
                     )}
                   </div>
 
                   <div className="flex gap-2 mr-4">
-                    <button
-                      onClick={() => handleEdit(expense)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                      title="تعديل"
-                    >
+                    <button onClick={() => handleEdit(expense)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg">
                       <Edit2 className="w-5 h-5" />
                     </button>
-                    <button
-                      onClick={() => handleDelete(expense.id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                      title="حذف"
-                    >
+                    <button onClick={() => handleDelete(expense.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
                       <Trash2 className="w-5 h-5" />
                     </button>
                   </div>
                 </div>
 
-                {/* Progress bar for expense percentage */}
                 <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100">
-                  <div
-                    className="h-full bg-gradient-to-r from-red-600 to-rose-600 rounded-full transition-all duration-500"
-                    style={{ width: `${((expense.amount / totalExpensesThisMonth) * 100)}%` }}
-                  ></div>
+                  <div className="h-full bg-gradient-to-r from-red-600 to-rose-600 rounded-full" style={{ width: `${((expense.amount / totalExpensesThisMonth) * 100)}%` }}></div>
                 </div>
               </div>
             </div>
