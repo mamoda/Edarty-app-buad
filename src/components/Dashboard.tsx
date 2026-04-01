@@ -7,33 +7,22 @@ import {
   TrendingUp,
   BarChart3,
   Briefcase,
-  Crown,
   MessageCircle,
   Headphones,
   Send,
   X,
   GraduationCap,
   Bell,
-  Search,
   ChevronLeft,
   ChevronRight,
-  LineChart,
   Wallet,
-  Activity,
   DollarSign,
   Settings,
   Home,
   Maximize2,
   UserPlus,
-  Globe,
-  Moon,
-  Sun,
   RefreshCw,
-  CreditCard,
-  Landmark,
-  FileText,
   School,
-  Mail,
   AlertCircle,
   Heart,
 } from "lucide-react";
@@ -46,13 +35,12 @@ import FeesManager from "./FeesManager";
 import ExpensesManager from "./ExpensesManager";
 import ProfitReport from "./ProfitReport";
 import ParentsManager from "./ParentsManager";
-import logo from "../assets/logo.png";
+import SettingsManager from "./SettingsManager";
 import backgroundPattern from "../assets/background-pattern.png";
 import backgroundWave from "../assets/background-wave.png";
 import backgroundDots from "../assets/background-dots.png";
-import UsersManager from "./UsersManager";
 
-
+// تعريف نوع View مع إضافة settings
 type View =
   | "dashboard"
   | "students"
@@ -60,7 +48,8 @@ type View =
   | "fees"
   | "expenses"
   | "reports"
-  | "parents";
+  | "parents"
+  | "settings"; // <-- أضف settings هنا
 
 interface StatCardProps {
   title: string;
@@ -430,7 +419,6 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose }) => {
 };
 
 export default function Dashboard() {
-  const navigate = useNavigate();
   const { user, schoolId, role, signOut, loading: authLoading } = useAuth();
 
   const [currentView, setCurrentView] = useState<View>("dashboard");
@@ -466,7 +454,6 @@ export default function Dashboard() {
       overlay: "from-purple-50/30 to-pink-50/30",
     },
   ];
-
 
   // تحميل عدد أولياء الأمور
   const loadParentsCount = async () => {
@@ -791,13 +778,16 @@ export default function Dashboard() {
                     currentView={currentView}
                     onClick={() => handleViewChange("reports")}
                   />
+                  
+                  <ModernMenuItem
+                    label="الإعدادات"
+                    icon={Settings}
+                    view="settings"
+                    currentView={currentView}
+                    onClick={() => handleViewChange("settings")}
+                  />
 
                   <div className="h-px bg-gray-200 my-2"></div>
-
-                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-all duration-200">
-                    <Settings className="w-4 h-4" />
-                    <span className="flex-1 text-right font-medium">الإعدادات</span>
-                  </button>
 
                   <button
                     onClick={() => setShowSidebar(false)}
@@ -893,7 +883,7 @@ export default function Dashboard() {
                         />
                         <ModernStatCard 
                           title="إجمالي المعلمين"
-                          value={stats.totalStudents > 0 ? Math.ceil(stats.totalStudents / 20) : 0} // افتراض 1 معلم لكل 20 طالب
+                          value={stats.totalStudents > 0 ? Math.ceil(stats.totalStudents / 20) : 0}
                           icon={Briefcase}
                           color="from-emerald-600 to-teal-600"
                           subValue="تقديري بناءً على عدد الطلاب"
@@ -1024,7 +1014,7 @@ export default function Dashboard() {
               ) : currentView === "reports" ? (
                 <ProfitReport />
               ) : currentView === "settings" ? (
-                <UsersManager />
+                <SettingsManager />
               ) : (
                 <div className="bg-white/90 backdrop-blur-xl rounded-xl p-8 text-center">
                   <p className="text-gray-500">جاري التطوير...</p>
