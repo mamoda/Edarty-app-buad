@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
-import { Parent, StudentWithDetails } from "../types/parent";
+import { Parent, StudentWithDetails } from "../types/database";
 
 interface ParentsManagerProps {
   onUpdate: () => void;
@@ -544,7 +544,7 @@ export default function ParentsManager({ onUpdate }: ParentsManagerProps) {
                           : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                       }`}
                     >
-                      {studentData.student.name}
+                      {studentData.student.full_name}
                     </button>
                   ))}
                 </div>
