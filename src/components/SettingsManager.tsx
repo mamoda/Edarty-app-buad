@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
+import { SchoolUser } from "../types/database";
 
 interface SchoolUserWithDetails {
   id: string;
@@ -86,13 +87,13 @@ export default function SettingsManager() {
     accountant: "محاسب",
   };
 
-  // إنشاء قائمة المدارس المعالجة - تبسيط الحل
+  // إنشاء قائمة المدارس المعالجة - مع تحديد النوع بوضوح
   const schoolOptions = useMemo(() => {
     if (!allSchools || allSchools.length === 0) {
       return [] as Array<{ id: string; label: string; role: string; isPrimary: boolean }>;
     }
     
-    return allSchools.map(school => ({
+    return allSchools.map((school: SchoolUser) => ({
       id: school.school_id,
       label: `${school.school_id.slice(0, 8)} - ${roleNames[school.role]}`,
       role: school.role,
@@ -404,7 +405,7 @@ export default function SettingsManager() {
                 className="w-full p-4 text-right bg-white rounded-lg border hover:border-blue-500 hover:bg-blue-50 transition-all"
               >
                 <div className="font-medium text-gray-900">
-                  {currentSchool?.schoolId === school.id ? "✓ " : ""}
+                  {currentSchool && currentSchool.schoolId === school.id ? "✓ " : ""}
                   مدرسة #{school.id.slice(0, 8)}
                 </div>
                 <div className="text-sm text-gray-500 mt-1">
@@ -516,7 +517,6 @@ export default function SettingsManager() {
       {/* باقي الأقسام - نفس الكود السابق */}
       {activeTab === "users" && canManageUsers && (
         <div className="space-y-6">
-          {/* نفس الكود السابق للمستخدمين */}
           <div className="flex justify-end">
             <button
               onClick={() => setShowInviteForm(true)}

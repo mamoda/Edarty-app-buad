@@ -10,7 +10,7 @@ interface ExpensesManagerProps {
 }
 
 export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
-  const { schoolId, user } = useAuth();
+  const { currentSchool, user } = useAuth();
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,10 +29,10 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
   });
 
   useEffect(() => {
-    if (schoolId) {
+    if (currentSchool) {
       loadExpenses();
     }
-  }, [schoolId, selectedMonth, selectedYear]);
+  }, [currentSchool, selectedMonth, selectedYear]);
 
   const formatNumber = (num: number, fractionDigits: number = 2) => {
     return Number(num).toLocaleString("ar-EG", {
@@ -50,7 +50,7 @@ export default function ExpensesManager({ onUpdate }: ExpensesManagerProps) {
   };
 
 const loadExpenses = async () => {
-  if (!schoolId) return;
+  if (!currentSchool) return;
 
   setLoading(true);
   try {
@@ -66,7 +66,7 @@ const loadExpenses = async () => {
     const { data, error } = await supabase
       .from("expenses")
       .select("*")
-      .eq("school_id", schoolId)
+      .eq("school_id", currentSchool)
       .gte("expense_date", startDate)
       .lte("expense_date", endDate)
       .order("expense_date", { ascending: false });
@@ -81,7 +81,7 @@ const loadExpenses = async () => {
 };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!schoolId) return;
+    if (!currentSchool) return;
 
     try {
       const expenseData = {
@@ -90,7 +90,7 @@ const loadExpenses = async () => {
         amount: parseFloat(formData.amount),
         expense_date: formData.expense_date,
         notes: formData.notes,
-        school_id: schoolId,
+        school_id: currentSchool,
         user_id: user?.id,
       };
 
@@ -99,7 +99,7 @@ const loadExpenses = async () => {
           .from("expenses")
           .update(expenseData)
           .eq("id", editingExpense.id)
-          .eq("school_id", schoolId);
+          .eq("school_id", currentSchool);
 
         if (error) throw error;
       } else {
@@ -127,7 +127,7 @@ const loadExpenses = async () => {
         .from("expenses")
         .delete()
         .eq("id", id)
-        .eq("school_id", schoolId);
+        .eq("school_id", currentSchool);
 
       if (error) throw error;
       loadExpenses();
