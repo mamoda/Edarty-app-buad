@@ -35,6 +35,7 @@ import {
   School,
   Mail,
   AlertCircle,
+  Heart,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -44,6 +45,7 @@ import TeachersManager from "./TeachersManager";
 import FeesManager from "./FeesManager";
 import ExpensesManager from "./ExpensesManager";
 import ProfitReport from "./ProfitReport";
+import ParentsManager from "./ParentsManager";
 
 type View =
   | "dashboard"
@@ -51,7 +53,8 @@ type View =
   | "teachers"
   | "fees"
   | "expenses"
-  | "reports";
+  | "reports"
+  | "parents";
 
 interface StatCardProps {
   title: string;
@@ -437,9 +440,27 @@ export default function Dashboard() {
   const [showSidebar, setShowSidebar] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState("month");
   const [dataError, setDataError] = useState<string | null>(null);
+  const [parentsCount, setParentsCount] = useState(0);
 
   const hasLoadedStatsRef = useRef(false);
   const isLoadingRef = useRef(false);
+
+  // تحميل عدد أولياء الأمور
+  const loadParentsCount = async () => {
+    if (!schoolId) return;
+    try {
+      const { count, error } = await supabase
+        .from("parents")
+        .select("*", { count: "exact", head: true })
+        .eq("school_id", schoolId);
+      
+      if (!error) {
+        setParentsCount(count || 0);
+      }
+    } catch (error) {
+      console.error("Error loading parents count:", error);
+    }
+  };
 
   // تحميل الإحصائيات
   const loadStatistics = async () => {
@@ -486,6 +507,7 @@ export default function Dashboard() {
     if (!schoolId) return;
     if (hasLoadedStatsRef.current) return;
     loadStatistics();
+    loadParentsCount();
   }, [schoolId]);
 
   const handleViewChange = (view: View) => {
@@ -499,6 +521,7 @@ export default function Dashboard() {
   const handleRefresh = () => {
     hasLoadedStatsRef.current = false;
     loadStatistics();
+    loadParentsCount();
   };
 
   // بيانات الرسم البياني
@@ -684,6 +707,14 @@ export default function Dashboard() {
                     currentView={currentView}
                     onClick={() => handleViewChange("teachers")}
                   />
+                  <ModernMenuItem
+                    label="أولياء الأمور"
+                    icon={Heart}
+                    view="parents"
+                    count={parentsCount}
+                    currentView={currentView}
+                    onClick={() => handleViewChange("parents")}
+                  />
                   
                   {canManageFees && (
                     <ModernMenuItem
@@ -841,6 +872,17 @@ export default function Dashboard() {
                         />
                       </div>
 
+                      {/* إضافة بطاقة إحصائية لأولياء الأمور */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <ModernStatCard
+                          title="أولياء الأمور"
+                          value={parentsCount}
+                          icon={Heart}
+                          color="from-purple-600 to-pink-600"
+                          subValue="مسجلين في النظام"
+                        />
+                      </div>
+
                       {/* الرسم البياني */}
                       <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-sm p-6 border border-gray-100/50">
                         <div className="flex items-center justify-between mb-4">
@@ -877,6 +919,13 @@ export default function Dashboard() {
                             color="from-blue-600 to-indigo-600"
                             onClick={() => handleViewChange("students")}
                           />
+                          <QuickActionCard
+                            title="إضافة ولي أمر"
+                            description="تسجيل ولي أمر جديد"
+                            icon={Heart}
+                            color="from-purple-600 to-pink-600"
+                            onClick={() => handleViewChange("parents")}
+                          />
                           {canManageFees && (
                             <QuickActionCard
                               title="تسجيل مصروف"
@@ -911,6 +960,8 @@ export default function Dashboard() {
                 <StudentsManager onUpdate={handleRefresh} />
               ) : currentView === "teachers" ? (
                 <TeachersManager onUpdate={handleRefresh} />
+              ) : currentView === "parents" ? (
+                <ParentsManager onUpdate={handleRefresh} />
               ) : currentView === "fees" ? (
                 <FeesManager onUpdate={handleRefresh} />
               ) : currentView === "expenses" ? (
