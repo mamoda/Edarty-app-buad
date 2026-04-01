@@ -58,7 +58,9 @@ interface Transaction {
 }
 
 export default function FeesManager({ onUpdate }: FeesManagerProps) {
-  const { currentSchool, user } = useAuth();
+const { currentSchool } = useAuth();
+const schoolId = currentSchool?.schoolId;
+const role = currentSchool?.role;
 
   const [fees, setFees] = useState<Fee[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -87,10 +89,10 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
   });
 
   useEffect(() => {
-    if (currentSchool) {
+    if (schoolId) {
       loadData();
     }
-  }, [currentSchool, selectedMonth, selectedYear]);
+  }, [schoolId, selectedMonth, selectedYear]);
 
   useEffect(() => {
     calculateBalances();
@@ -139,7 +141,7 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
   };
 
   const loadData = async () => {
-    if (!currentSchool) return;
+    if (!schoolId) return;
 
     setLoading(true);
     try {
@@ -151,14 +153,14 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
         supabase
           .from("fees")
           .select("*")
-          .eq("school_id", currentSchool)
+          .eq("school_id", schoolId)
           .gte("payment_date", startDate)
           .lte("payment_date", endDate)
           .order("payment_date", { ascending: false }),
         supabase
           .from("students")
           .select("*")
-          .eq("school_id", currentSchool)
+          .eq("school_id", schoolId)
           .order("full_name"),
       ]);
 
@@ -281,7 +283,7 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentSchool) return;
+    if (!schoolId) return;
 
     try {
       const receiptNumber = generateReceiptNumber();
@@ -300,8 +302,8 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
         payment_date: formData.payment_date,
         academic_year: formData.academic_year,
         notes: JSON.stringify(notesData),
-        school_id: currentSchool,
-        user_id: user?.id,
+        school_id: schoolId,
+        user_id: currentSchool?.schoolId,
       };
 
       if (editingFee) {
@@ -309,7 +311,7 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
           .from("fees")
           .update(feeData)
           .eq("id", editingFee.id)
-          .eq("school_id", currentSchool);
+          .eq("school_id", schoolId);
 
         if (error) throw error;
       } else {
@@ -351,7 +353,7 @@ export default function FeesManager({ onUpdate }: FeesManagerProps) {
         .from("fees")
         .delete()
         .eq("id", id)
-        .eq("school_id", currentSchool);
+        .eq("school_id", schoolId);
 
       if (error) throw error;
       loadData();
