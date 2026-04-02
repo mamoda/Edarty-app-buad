@@ -215,21 +215,6 @@ export default function Login() {
             </p>
           </div>
 
-          {!showAdminPanel && (
-            <div className="flex gap-2 mb-6 bg-gray-100/80 p-1 rounded-xl">
-              <button
-                type="button"
-                onClick={() => setIsLogin(true)}
-                className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all duration-300 text-sm ${
-                  isLogin
-                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                تسجيل الدخول
-              </button>
-            </div>
-          )}
 
           {showAdminPanel && (
             <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-xl">
