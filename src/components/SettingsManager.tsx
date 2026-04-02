@@ -405,7 +405,8 @@ export default function SettingsManager() {
                 className="w-full p-4 text-right bg-white rounded-lg border hover:border-blue-500 hover:bg-blue-50 transition-all"
               >
                 <div className="font-medium text-gray-900">
-                  {currentSchool && currentSchool.schoolId === school.id ? "✓ " : ""}
+                  {/* Show checkmark only if this school is the primary school */}
+                  {school.isPrimary && "✓ "}
                   مدرسة #{school.id.slice(0, 8)}
                 </div>
                 <div className="text-sm text-gray-500 mt-1">
