@@ -208,11 +208,10 @@ export default function Login() {
           <div className="flex flex-col items-center mb-8">
             <div className="relative group">
               <div className="absolute -inset-2 bg-gradient-to-r from-blue-600/20 to-indigo-600/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              <img src={logo} alt="شعار التطبيق" className="h-28 w-auto mb-3 relative z-10" />
+              <img src={logo} alt="شعار التطبيق" className="h-30 w-auto mb-3 relative z-10" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">إدارتــي</h1>
             <p className="text-gray-600 text-center text-sm">
-              نظام إدارة المدارس والمؤسسات التعليمية
+              ERP متكامل لإدارة المدارس والمؤسسات التعليمية بكل سهولة وأمان
             </p>
           </div>
 
