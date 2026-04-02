@@ -17,9 +17,8 @@ interface SchoolData {
 }
 
 export function useSchoolData() {
-  const { currentSchool, user, userProfile } = useAuth(); // يمكنك إضافة user و userProfile إذا احتجتهم
+  const { currentSchool, user, userProfile } = useAuth(); 
   
-  // استخراج schoolId من currentSchool
   const schoolId = currentSchool?.schoolId;
   
   const [schoolName, setSchoolName] = useState('');
@@ -89,7 +88,6 @@ export function useSchoolData() {
     features,
     loading,
     refreshSchoolData,
-    // يمكنك إضافة user و userProfile إذا احتجتهم
     user,
     userProfile,
   };

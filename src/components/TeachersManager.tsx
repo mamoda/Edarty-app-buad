@@ -45,7 +45,9 @@ const getMonthName = (month: number) => {
 };
 
 export default function TeachersManager({ onUpdate, onSalaryProcessed }: TeachersManagerProps) {
-  const { user, schoolId, role } = useAuth(); // استخدم user و schoolId بدلاً من authUser و currentSchool
+  const { currentSchool, user, userProfile } = useAuth(); 
+  
+  const schoolId = currentSchool?.schoolId;
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);

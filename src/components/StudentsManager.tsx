@@ -25,8 +25,9 @@ interface StudentsManagerProps {
 }
 
 export default function StudentsManager({ onUpdate }: StudentsManagerProps) {
-  const { schoolId, user } = useAuth();
-
+  const { currentSchool, user, userProfile } = useAuth(); 
+  
+  const schoolId = currentSchool?.schoolId;
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
