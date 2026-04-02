@@ -74,7 +74,8 @@ const getBehaviorIcon = (type: string) => {
 };
 
 export default function ParentsManager({ onUpdate }: ParentsManagerProps) {
-  const { user, schoolId } = useAuth();
+  const { currentSchool, user, userProfile } = useAuth(); 
+  const schoolId = currentSchool?.schoolId;
   const [parents, setParents] = useState<Parent[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
