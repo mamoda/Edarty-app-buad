@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 interface SchoolData {
   schoolName: string;
   schoolEmail: string;
+  schoolId: string;
   schoolAddress: string;
   schoolPhone: string;
   schoolTaxNumber: string;
@@ -16,7 +17,11 @@ interface SchoolData {
 }
 
 export function useSchoolData() {
-  const { user, schoolId, role } = useAuth(); // استخدم user و schoolId فقط
+  const { currentSchool, user, userProfile } = useAuth(); // يمكنك إضافة user و userProfile إذا احتجتهم
+  
+  // استخراج schoolId من currentSchool
+  const schoolId = currentSchool?.schoolId;
+  
   const [schoolName, setSchoolName] = useState('');
   const [schoolEmail, setSchoolEmail] = useState('');
   const [schoolAddress, setSchoolAddress] = useState('');
@@ -74,6 +79,7 @@ export function useSchoolData() {
   return {
     schoolName,
     schoolEmail,
+    schoolId,
     schoolAddress,
     schoolPhone,
     schoolTaxNumber,
@@ -83,5 +89,8 @@ export function useSchoolData() {
     features,
     loading,
     refreshSchoolData,
+    // يمكنك إضافة user و userProfile إذا احتجتهم
+    user,
+    userProfile,
   };
 }

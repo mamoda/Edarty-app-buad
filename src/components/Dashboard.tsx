@@ -1,6 +1,5 @@
 // src/components/Dashboard.tsx
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Users,
   TrendingDown,
@@ -40,7 +39,6 @@ import backgroundPattern from "../assets/background-pattern.png";
 import backgroundWave from "../assets/background-wave.png";
 import backgroundDots from "../assets/background-dots.png";
 
-// تعريف نوع View مع إضافة settings
 type View =
   | "dashboard"
   | "students"
