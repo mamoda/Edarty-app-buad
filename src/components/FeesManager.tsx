@@ -446,7 +446,9 @@ const role = currentSchool?.role;
       <body>
         <div class="receipt">
           <div class="header">
-            <div class="school-name">نظام إدارتي</div>
+            <div class="school-name">                    <span className="text-sm font-semibold text-gray-900">
+                      {currentSchool?.schoolName || "جاري التحميل..."}
+                    </span>{" "}/div>
             <div class="receipt-title">💰 إيصال دفع المصاريف الدراسية</div>
           </div>
           <div class="receipt-number">
