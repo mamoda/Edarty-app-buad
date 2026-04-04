@@ -10,15 +10,21 @@ import { User as SupabaseUser } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import { SchoolUser, User as AppUser } from "../types/database";
 
+// تمديد نوع SchoolUser لإضافة school_name
+interface ExtendedSchoolUser extends SchoolUser {
+  school_name?: string;
+}
+
 interface AuthContextType {
   user: SupabaseUser | null;
   userProfile: AppUser | null;
   currentSchool: {
     schoolId: string;
+    schoolName: string;
     role: 'owner' | 'admin' | 'teacher' | 'accountant';
     isPrimary: boolean;
   } | null;
-  allSchools: SchoolUser[];
+  allSchools: ExtendedSchoolUser[];
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (
@@ -37,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<AppUser | null>(null);
   const [currentSchool, setCurrentSchool] = useState<AuthContextType['currentSchool']>(null);
-  const [allSchools, setAllSchools] = useState<SchoolUser[]>([]);
+  const [allSchools, setAllSchools] = useState<ExtendedSchoolUser[]>([]);
   const [loading, setLoading] = useState(true);
 
   // جلب ملف المستخدم من جدول users
@@ -58,17 +64,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // جلب جميع مدارس المستخدم
   const fetchUserSchools = async (userId: string) => {
-    const { data, error } = await supabase
+    // أولاً: جلب علاقات المستخدم بالمدارس
+    const { data: schoolUsers, error: schoolUsersError } = await supabase
       .from("school_users")
       .select("*")
       .eq("user_id", userId);
 
-    if (error) {
-      console.error("fetchUserSchools error:", error);
+    if (schoolUsersError) {
+      console.error("fetchUserSchools error:", schoolUsersError);
       return [];
     }
 
-    return data as SchoolUser[];
+    if (!schoolUsers || schoolUsers.length === 0) {
+      return [];
+    }
+
+    // ثانياً: جلب أسماء المدارس لكل مدرسة على حدة
+    const schoolIds = schoolUsers.map(su => su.school_id);
+    
+    const { data: schools, error: schoolsError } = await supabase
+      .from("schools")
+      .select("id, name")
+      .in("id", schoolIds);
+
+    if (schoolsError) {
+      console.error("fetchSchools error:", schoolsError);
+      // إذا فشل جلب الأسماء، نرجع البيانات بدون أسماء
+      return schoolUsers.map(su => ({
+        ...su,
+        school_name: "غير محدد"
+      }));
+    }
+
+    // دمج البيانات: إضافة اسم المدرسة لكل علاقة
+    const schoolsMap = new Map();
+    schools?.forEach(school => {
+      schoolsMap.set(school.id, school.name);
+    });
+
+    return schoolUsers.map(su => ({
+      ...su,
+      school_name: schoolsMap.get(su.school_id) || "غير محدد"
+    })) as ExtendedSchoolUser[];
+  };
+
+  // جلب اسم المدرسة من ID
+  const fetchSchoolName = async (schoolId: string): Promise<string> => {
+    const { data, error } = await supabase
+      .from("schools")
+      .select("name")
+      .eq("id", schoolId)
+      .single();
+    
+    if (error) {
+      console.error("fetchSchoolName error:", error);
+      return "غير محدد";
+    }
+    
+    return data?.name || "غير محدد";
   };
 
   useEffect(() => {
@@ -101,6 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (defaultSchool) {
             setCurrentSchool({
               schoolId: defaultSchool.school_id,
+              schoolName: defaultSchool.school_name || await fetchSchoolName(defaultSchool.school_id),
               role: defaultSchool.role,
               isPrimary: defaultSchool.is_primary || false,
             });
@@ -239,8 +293,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const switchSchool = async (schoolId: string) => {
     const school = allSchools.find(s => s.school_id === schoolId);
     if (school && user) {
+      // جلب اسم المدرسة إذا لم يكن موجوداً
+      let schoolName = school.school_name;
+      if (!schoolName || schoolName === "غير محدد") {
+        schoolName = await fetchSchoolName(schoolId);
+      }
+      
       setCurrentSchool({
         schoolId: school.school_id,
+        schoolName: schoolName,
         role: school.role,
         isPrimary: school.is_primary || false,
       });
@@ -250,7 +311,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // إعادة تحميل البيانات إذا لزم الأمر
       window.dispatchEvent(new CustomEvent('schoolChanged', { 
-        detail: { schoolId: school.school_id, role: school.role }
+        detail: { schoolId: school.school_id, role: school.role, schoolName: schoolName }
       }));
     }
   };
