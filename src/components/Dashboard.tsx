@@ -38,6 +38,7 @@ import SettingsManager from "./SettingsManager";
 import backgroundPattern from "../assets/background-pattern.png";
 import backgroundWave from "../assets/background-wave.png";
 import backgroundDots from "../assets/background-dots.png";
+import logo from "../assets/logo.png";
 
 type View =
   | "dashboard"
@@ -417,13 +418,13 @@ const ModernChat: React.FC<ChatProps> = ({ isOpen, onClose }) => {
 };
 
 export default function Dashboard() {
-  const { 
-    user, 
-    currentSchool,  // تغيير: استخدم currentSchool بدلاً من schoolId, role
-    signOut, 
+  const {
+    user,
+    currentSchool, // تغيير: استخدم currentSchool بدلاً من schoolId, role
+    signOut,
     loading: authLoading,
     allSchools,
-    switchSchool
+    switchSchool,
   } = useAuth();
 
   // استخراج schoolId و role من currentSchool
@@ -548,8 +549,9 @@ export default function Dashboard() {
       loadParentsCount();
     };
 
-    window.addEventListener('schoolChanged', handleSchoolChange);
-    return () => window.removeEventListener('schoolChanged', handleSchoolChange);
+    window.addEventListener("schoolChanged", handleSchoolChange);
+    return () =>
+      window.removeEventListener("schoolChanged", handleSchoolChange);
   }, [schoolId]);
 
   const handleViewChange = (view: View) => {
@@ -609,7 +611,8 @@ export default function Dashboard() {
             <School className="w-16 h-16 text-blue-500 mx-auto mb-4" />
             <h2 className="text-xl font-bold text-gray-900 mb-2">اختر مدرسة</h2>
             <p className="text-gray-500 mb-6">
-              أنت مسجل في {allSchools.length} مدرسة. يرجى اختيار مدرسة للعمل عليها.
+              أنت مسجل في {allSchools.length} مدرسة. يرجى اختيار مدرسة للعمل
+              عليها.
             </p>
             <div className="space-y-3">
               {allSchools.map((school) => (
@@ -622,7 +625,14 @@ export default function Dashboard() {
                     المدرسة #{school.school_id.slice(0, 8)}
                   </div>
                   <div className="text-sm text-gray-500 mt-1">
-                    الدور: {school.role === "owner" ? "مالك" : school.role === "admin" ? "مدير" : school.role === "accountant" ? "محاسب" : "معلم"}
+                    الدور:{" "}
+                    {school.role === "owner"
+                      ? "مالك"
+                      : school.role === "admin"
+                        ? "مدير"
+                        : school.role === "accountant"
+                          ? "محاسب"
+                          : "معلم"}
                     {school.is_primary && " (أساسية)"}
                   </div>
                 </button>
@@ -645,7 +655,14 @@ export default function Dashboard() {
     );
   }
 
-  const roleName = role === "owner" ? "مالك" : role === "accountant" ? "محاسب" : role === "teacher" ? "معلم" : "مشرف";
+  const roleName =
+    role === "owner"
+      ? "مالك"
+      : role === "accountant"
+        ? "محاسب"
+        : role === "teacher"
+          ? "معلم"
+          : "مشرف";
 
   return (
     <div className="min-h-screen bg-gray-50/50 relative" dir="rtl">
@@ -686,27 +703,33 @@ export default function Dashboard() {
         <header className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
-              <div className="flex items-center gap-4">
-                <div
-                  className="relative group cursor-pointer"
-                  onClick={() => handleViewChange("dashboard")}
-                >
-                  <div className="absolute -inset-2 bg-gradient-to-r from-blue-600/20 to-indigo-600/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                  <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-2 rounded-lg relative z-10">
-                    <BarChart3 className="w-6 h-6 text-white" />
-                  </div>
-                </div>
+<div className="flex items-center gap-4">
+  <div
+    className="relative group cursor-pointer"
+    onClick={() => handleViewChange("dashboard")}
+  >
+    <div className="absolute -inset-2 bg-gradient-to-r from-blue-600/20 to-indigo-600/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-2 rounded-lg relative z-10">
+      <BarChart3 className="w-6 h-6 text-white" />
+    </div>
+  </div>
 
-                <div className="h-6 w-px bg-gray-200"></div>
+  <div className="h-6 w-px bg-gray-200"></div>
 
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">إدارتــي</h1>
-                  <p className="text-xs text-gray-500">
-                    {user?.email} • {roleName}
-                  </p>
-                </div>
-              </div>
-
+  {/* اللوجو فقط */}
+  <div className="flex items-center gap-3">
+    <img 
+      src={logo} 
+      alt="شعار المدرسة" 
+      className="h-10 w-auto object-contain"
+    />
+    <div>
+      <p className="text-xs text-gray-500">
+        {user?.email} • {roleName}
+      </p>
+    </div>
+  </div>
+</div>
               <div className="flex items-center gap-2">
                 {/* زر تبديل المدرسة - يظهر فقط إذا كان المستخدم في عدة مدارس */}
                 {allSchools.length > 1 && (
@@ -716,9 +739,11 @@ export default function Dashboard() {
                       className="flex items-center gap-2 px-3 py-1.5 bg-gray-100/80 hover:bg-gray-200/80 rounded-lg transition-all duration-200"
                     >
                       <School className="w-4 h-4 text-gray-600" />
-                      <span className="text-sm text-gray-700">تبديل المدرسة</span>
+                      <span className="text-sm text-gray-700">
+                        تبديل المدرسة
+                      </span>
                     </button>
-                    
+
                     {showSchoolSwitcher && (
                       <div className="absolute left-0 top-full mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50">
                         {allSchools.map((school) => (
@@ -735,11 +760,20 @@ export default function Dashboard() {
                             <div className="font-medium text-sm text-gray-900">
                               مدرسة #{school.school_id.slice(0, 8)}
                               {school.school_id === schoolId && (
-                                <span className="mr-2 text-blue-600 text-xs">(الحالية)</span>
+                                <span className="mr-2 text-blue-600 text-xs">
+                                  (الحالية)
+                                </span>
                               )}
                             </div>
                             <div className="text-xs text-gray-500 mt-1">
-                              الدور: {school.role === "owner" ? "مالك" : school.role === "admin" ? "مدير" : school.role === "accountant" ? "محاسب" : "معلم"}
+                              الدور:{" "}
+                              {school.role === "owner"
+                                ? "مالك"
+                                : school.role === "admin"
+                                  ? "مدير"
+                                  : school.role === "accountant"
+                                    ? "محاسب"
+                                    : "معلم"}
                             </div>
                           </button>
                         ))}
@@ -783,9 +817,10 @@ export default function Dashboard() {
                     <School className="w-4 h-4 text-blue-600" />
                   </div>
                   <div>
- <span className="text-sm font-semibold text-gray-900">
-      {currentSchool?.schoolName || 'جاري التحميل...'}
-    </span>                    {role && (
+                    <span className="text-sm font-semibold text-gray-900">
+                      {currentSchool?.schoolName || "جاري التحميل..."}
+                    </span>{" "}
+                    {role && (
                       <span className="text-xs text-gray-500 mr-2">
                         ({roleName})
                       </span>
