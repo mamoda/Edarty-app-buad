@@ -721,7 +721,7 @@ export default function Dashboard() {
                   <img
                     src={logo}
                     alt="شعار المدرسة"
-                    className="h-10 w-auto object-contain"
+                    className="h-16 w-auto object-contain"
                   />
                   <div>
                     <p className="text-xs text-gray-500">
