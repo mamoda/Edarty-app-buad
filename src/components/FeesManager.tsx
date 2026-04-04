@@ -58,9 +58,9 @@ interface Transaction {
 }
 
 export default function FeesManager({ onUpdate }: FeesManagerProps) {
-const { currentSchool } = useAuth();
-const schoolId = currentSchool?.schoolId;
-const role = currentSchool?.role;
+  const { currentSchool } = useAuth();
+  const schoolId = currentSchool?.schoolId;
+  const role = currentSchool?.role;
 
   const [fees, setFees] = useState<Fee[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -77,6 +77,7 @@ const role = currentSchool?.role;
   const [studentTransactions, setStudentTransactions] = useState<Transaction[]>([]);
   const [currentReceipt, setCurrentReceipt] = useState<any>(null);
   const [selectedView, setSelectedView] = useState<"dashboard" | "students" | "transactions">("dashboard");
+  const [schoolName, setSchoolName] = useState("نظام إدارتي");
 
   const [formData, setFormData] = useState({
     student_id: "",
@@ -87,6 +88,31 @@ const role = currentSchool?.role;
     notes: "",
     payment_method: "cash" as "cash" | "card" | "bank_transfer" | "check",
   });
+
+  // جلب اسم المدرسة
+  useEffect(() => {
+    const fetchSchoolName = async () => {
+      if (schoolId) {
+        try {
+          const { data, error } = await supabase
+            .from("schools")
+            .select("name")
+            .eq("id", schoolId)
+            .single();
+          
+          if (error) throw error;
+          if (data?.name) {
+            setSchoolName(data.name);
+          }
+        } catch (error) {
+          console.error("Error fetching school name:", error);
+          setSchoolName("نظام إدارتي");
+        }
+      }
+    };
+    
+    fetchSchoolName();
+  }, [schoolId]);
 
   useEffect(() => {
     if (schoolId) {
@@ -446,7 +472,7 @@ const role = currentSchool?.role;
       <body>
         <div class="receipt">
           <div class="header">
-            <div class="school-name"> ${currentReceipt?.schoolName}</div>
+            <div class="school-name">${schoolName || "نظام إدارتي"}</div>
             <div class="receipt-title">💰 إيصال دفع المصاريف الدراسية</div>
           </div>
           <div class="receipt-number">
@@ -463,7 +489,7 @@ const role = currentSchool?.role;
             <div class="value">${currentReceipt.amount.toFixed(2)} ج.م</div>
           </div>
           ${currentReceipt.notes ? `<div class="notes" style="background: #fef9e3; padding: 10px; border-radius: 8px; margin-top: 15px; font-size: 12px; color: #92400e;"><span>📝 ملاحظات:</span> ${currentReceipt.notes}</div>` : ''}
-          <div class="footer"><p>نظام إدارتي - إدارة المصاريف الدراسية</p></div>
+          <div class="footer"><p>${schoolName || "نظام إدارتي"} - إدارة المصاريف الدراسية</p></div>
         </div>
       </body>
       </html>
@@ -506,7 +532,7 @@ const role = currentSchool?.role;
       <body>
         <div class="statement">
           <div class="header">
-            <div class="school-name">نظام إدارتي</div>
+            <div class="school-name">${schoolName || "نظام إدارتي"}</div>
             <div style="font-size: 12px; color: #6b7280;">كشف حساب الطالب</div>
           </div>
           <div class="balance-info">
@@ -515,24 +541,32 @@ const role = currentSchool?.role;
             <div class="balance-card"><div>الرصيد الحالي</div><div class="balance-value" style="color: ${balance.balance >= 0 ? "#059669" : "#dc2626"}">${formatNumber(balance.balance)} ج.م</div></div>
           </div>
           <table class="transactions-table">
-            <thead><tr><th>التاريخ</th><th>البيان</th><th>المبلغ</th><th>طريقة الدفع</th><th>الرصيد</th></tr></thead>
+            <thead>
+              <tr>
+                <th class="text-right py-3 px-2">التاريخ</th>
+                <th class="text-right py-3 px-2">البيان</th>
+                <th class="text-right py-3 px-2">المبلغ</th>
+                <th class="text-right py-3 px-2">طريقة الدفع</th>
+                <th class="text-right py-3 px-2">الرصيد</th>
+              </tr>
+            </thead>
             <tbody>
               ${studentTransactions.map(t => `
                 <tr>
-                  <td>${formatDate(t.date)}</td>
-                  <td>${t.description}</td>
-                  <td class="${t.amount >= 0 ? "deposit" : "withdrawal"}">${t.amount >= 0 ? "+" : "-"}${formatNumber(Math.abs(t.amount))}</td>
-                  <td>
+                  <td class="py-3 px-2">${formatDate(t.date)}</td>
+                  <td class="py-3 px-2">${t.description}</td>
+                  <td class="py-3 px-2 ${t.amount >= 0 ? "deposit" : "withdrawal"}">${t.amount >= 0 ? "+" : "-"}${formatNumber(Math.abs(t.amount))}</td>
+                  <td class="py-3 px-2">
                     ${t.payment_method === 'cash' ? 'نقدي' :
                       t.payment_method === 'card' ? 'بطاقة' :
                       t.payment_method === 'bank_transfer' ? 'تحويل بنكي' : 'شيك'}
                   </td>
-                  <td>${formatNumber(t.balance_after)}</td>
+                  <td class="py-3 px-2">${formatNumber(t.balance_after)}</td>
                 </tr>
               `).join("")}
             </tbody>
           </table>
-          <div class="footer"><p>نظام إدارتي - إدارة المصاريف الدراسية</p></div>
+          <div class="footer"><p>${schoolName || "نظام إدارتي"} - إدارة المصاريف الدراسية</p></div>
         </div>
       </body>
       </html>
@@ -606,6 +640,7 @@ const role = currentSchool?.role;
 
   return (
     <div className="space-y-6">
+      {/* باقي الكود كما هو - لم يتغير */}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -1406,7 +1441,7 @@ const role = currentSchool?.role;
                             </tr>
                           ))}
                         </tbody>
-                      </table>
+                       </table>
                     </div>
 
                     {studentTransactions.length === 0 && (
