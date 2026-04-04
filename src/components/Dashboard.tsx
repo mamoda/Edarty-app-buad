@@ -783,10 +783,9 @@ export default function Dashboard() {
                     <School className="w-4 h-4 text-blue-600" />
                   </div>
                   <div>
-                    <span className="text-sm font-semibold text-gray-900">
-                      المدرسة #{schoolId.slice(0, 8)}
-                    </span>
-                    {role && (
+ <span className="text-sm font-semibold text-gray-900">
+      {currentSchool?.schoolName || 'جاري التحميل...'}
+    </span>                    {role && (
                       <span className="text-xs text-gray-500 mr-2">
                         ({roleName})
                       </span>
