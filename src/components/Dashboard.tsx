@@ -703,33 +703,33 @@ export default function Dashboard() {
         <header className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
-<div className="flex items-center gap-4">
-  <div
-    className="relative group cursor-pointer"
-    onClick={() => handleViewChange("dashboard")}
-  >
-    <div className="absolute -inset-2 bg-gradient-to-r from-blue-600/20 to-indigo-600/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-2 rounded-lg relative z-10">
-      <BarChart3 className="w-6 h-6 text-white" />
-    </div>
-  </div>
+              <div className="flex items-center gap-4">
+                <div
+                  className="relative group cursor-pointer"
+                  onClick={() => handleViewChange("dashboard")}
+                >
+                  <div className="absolute -inset-2 bg-gradient-to-r from-blue-600/20 to-indigo-600/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  {/* <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-2 rounded-lg relative z-10">
+                    <BarChart3 className="w-6 h-6 text-white" />
+                  </div> */}
+                </div>
 
-  <div className="h-6 w-px bg-gray-200"></div>
+                <div className="h-6 w-px bg-gray-200"></div>
 
-  {/* اللوجو فقط */}
-  <div className="flex items-center gap-3">
-    <img 
-      src={logo} 
-      alt="شعار المدرسة" 
-      className="h-10 w-auto object-contain"
-    />
-    <div>
-      <p className="text-xs text-gray-500">
-        {user?.email} • {roleName}
-      </p>
-    </div>
-  </div>
-</div>
+                {/* اللوجو فقط */}
+                <div className="flex items-center gap-3">
+                  <img
+                    src={logo}
+                    alt="شعار المدرسة"
+                    className="h-10 w-auto object-contain"
+                  />
+                  <div>
+                    <p className="text-xs text-gray-500">
+                      {user?.email} • {roleName}
+                    </p>
+                  </div>
+                </div>
+              </div>
               <div className="flex items-center gap-2">
                 {/* زر تبديل المدرسة - يظهر فقط إذا كان المستخدم في عدة مدارس */}
                 {allSchools.length > 1 && (
