@@ -8,7 +8,6 @@ import {
   X,
   ChevronDown,
   ChevronUp,
-  BookOpen,
   Users,
   CheckCircle,
   XCircle,
